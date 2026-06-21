@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>タロット総合学習アプリ</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18",
+        "react-dom/client": "https://esm.sh/react-dom@18/client",
+        "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime",
+        "lucide-react": "https://esm.sh/lucide-react@0.292.0"
+      }
+    }
+  </script>
+
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* フェードインアニメーションの追加 */
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 m-0 p-0 font-sans">
+
+  <div id="root"></div>
+
+  <script type="text/babel" data-type="module">
+    import React, { useState, useEffect } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { 
+      RefreshCw, CheckCircle2, XCircle, ChevronRight, ChevronLeft, Play, 
+      BookOpen, Sparkles, BrainCircuit, LayoutGrid, Info, ArrowDownUp, ChevronDown, ChevronUp, Home, Layers, Star, ExternalLink // ← 行の最後に ExternalLink を追加
+    } from 'lucide-react';
+
+    // ==========================================
+    // データ定義セクション
+    // ==========================================
+
+    // --- タロットカードデータ (全78枚) ---
+    const TAROT_DECK = [
+      // 大アルカナ (22枚)
+      { id: 'm0', name: '0. 愚者 (The Fool)', type: 'major', isCourt: false, up: '自由、型にはまらない、無邪気、純粋、新しい始まり', rev: '軽率、わがまま、落ちこぼれ、無責任、焦り', desc: '崖の端に立つ若者と白い犬が描かれています。未知への旅立ち、自由、リスクを恐れない純粋な心と無限の可能性を象徴しています。' },
+      { id: 'm1', name: 'I. 魔術師 (The Magician)', type: 'major', isCourt: false, up: '創造、可能性、才能、チャンス、感覚、スタート', rev: '混迷、無気力、スランプ、裏切り、空回り', desc: '卓上に四大元素（ワンド、カップ、ソード、ペンタクル）が揃い、頭上に無限大のマークがあります。創造力と、何でも生み出せる無限の可能性を表します。' },
+      { id: 'm2', name: 'II. 女教皇 (The High Priestess)', type: 'major', isCourt: false, up: '直感、知性、安心、満足、期待、聡明', rev: '悲観、無気力、現実逃避、疑心暗鬼、冷徹', desc: '白と黒の柱の間に座り、律法の書物を持つ女性と足元の三日月。直感、知性、隠された真理、処女性を象徴しています。' },
+      { id: 'm3', name: 'III. 女帝 (The Empress)', type: 'major', isCourt: false, up: '繁栄、豊穣、母性、愛情、情熱、豊かさ', rev: '挫折、軽率、虚栄心、嫉妬、怠惰、過保護', desc: '豊かな自然の中でくつろぐ、ゆったりとした服を着た（妊娠を示唆する）女性。豊穣、母性、無条件の愛情、物質的な恵みを示します。' },
+      { id: 'm4', name: 'IV. 皇帝 (The Emperor)', type: 'major', isCourt: false, up: '責任、権威、実現、成功、リーダーシップ、決断力', rev: '傲慢、身勝手、独裁的、意志薄弱、未熟', desc: '硬い石の玉座に座り、甲冑を着込んだ威厳ある王。権力、責任、社会的な基盤、父性、そして強固な意志を象徴します。' },
+      { id: 'm5', name: 'V. 教皇 (The Hierophant)', type: 'major', isCourt: false, up: '慈悲、連帯、協調性、信頼、尊敬、優しさ', rev: '守旧的、束縛、躊躇、おせっかい、悪徳', desc: '信者たちに教えを説く、三位一体の冠を被った教皇と2本の鍵。伝統、規律、精神的な導き、道徳やルールを表します。' },
+      { id: 'm6', name: 'VI. 恋人 (The Lovers)', type: 'major', isCourt: false, up: '誘惑と戦う、選択、調和、情熱、絆、深い結びつき', rev: '誘惑、不道徳、失恋、空回り、無視、優柔不断', desc: 'エデンの園のアダムとイヴ、そして背後の天使（大天使ラファエル）。選択、調和、深い結びつき、そして誘惑の存在を象徴しています。' },
+      { id: 'm7', name: 'VII. 戦車 (The Chariot)', type: 'major', isCourt: false, up: '前進、勝利、行動力、成功、積極性、突進', rev: '暴走、挫折、自己中心、敗北、焦り', desc: '白と黒の2頭のスフィンクスを操る若き戦士。相反する力をコントロールし、勝利に向かって前進する強い意志を表します。' },
+      { id: 'm8', name: 'VIII. 力 (Strength)', type: 'major', isCourt: false, up: '意思、勇気、理性、自制、実行力、不屈の精神', rev: '甘え、引っ込み思案、無気力、人任せ、優柔不断', desc: '荒ぶるライオンを優しく手なずける女性と頭上の無限大マーク。物理的な力ではなく、精神力、忍耐、愛による調和を意味します。' },
+      { id: 'm9', name: 'IX. 隠者 (The Hermit)', type: 'major', isCourt: false, up: '探求、内観、悟り、慎重、思いやり、単独行動', rev: '閉鎖的、陰湿、消極的、無計画、誤解、孤立', desc: '暗闇の中で六芒星のランプを掲げ、杖をつく老人。内省、孤独な探求、真理を求める姿勢、過去からの学びを象徴しています。' },
+      { id: 'm10', name: 'X. 運命の輪 (Wheel of Fortune)', type: 'major', isCourt: false, up: '転換点、幸運、チャンス、変化、結果、打開', rev: '情勢の急転落、アクシデント、すれ違い、降格', desc: '回転する車輪の周りにアヌビスやスフィンクスなどの生き物がいます。周期的な変化、避けられない運命、人生の転換点を示します。' },
+      { id: 'm11', name: 'XI. 正義 (Justice)', type: 'major', isCourt: false, up: '公正、均衡、誠意、善意、両立、バランス', rev: '不正、偏見、不均衡、一方通行、モラル欠如', desc: '右手に剣、左手に天秤を持つ裁判官。公平、均衡、因果応報、そして感情に流されない客観的な判断を象徴します。' },
+      { id: 'm12', name: 'XII. 吊るされた男 (The Hanged Man)', type: 'major', isCourt: false, up: '修行、忍耐、奉仕、努力、試練、自己犠牲', rev: '徒労、自暴自棄、欲望、報われない努力', desc: '木に逆さ吊りにされていますが、顔は穏やかで後光が差しています。視点の転換、自己犠牲、忍耐、そして試練からの悟りを表します。' },
+      { id: 'm13', name: 'XIII. 死神 (Death)', type: 'major', isCourt: false, up: '終末、破滅、離散、終結、清算、新しい始まりへの区切り', rev: '再生、起死回生、新展開、リセット、回復', desc: '白馬に乗った骸骨の騎士の前に人々が倒れています。古いものの完全な終わりと新しい始まり、不可避の変容を意味します。' },
+      { id: 'm14', name: 'XIV. 節制 (Temperance)', type: 'major', isCourt: false, up: '調和、自制、節度、順応、献身、バランス', rev: '浪費、不安定、惰性、不摂生、アンバランス', desc: '片足を水に、片足を大地につき、二つのカップで水を移し替える天使。バランス、調和、異なるものの融合と節度を象徴します。' },
+      { id: 'm15', name: 'XV. 悪魔 (The Devil)', type: 'major', isCourt: false, up: '欲望、依存、束縛、堕落、裏切り、嫉妬', rev: '解放、回復、覚醒、束縛からの脱却、悪縁を切る', desc: '巨大な悪魔の下に、緩い鎖で繋がれた男女がいます。物質的執着、欲望、誘惑、そして自らが作り出した心の束縛を表します。' },
+      { id: 'm16', name: 'XVI. 塔 (The Tower)', type: 'major', isCourt: false, up: '崩壊、災害、悲劇、悲惨、トラブル、予期せぬ災難', rev: '緊迫、突然のトラブル、誤解、アクシデント、不幸', desc: '王冠を戴く塔に雷が落ち、炎とともに人々が転落しています。突然の崩壊、予期せぬトラブル、古い価値観の破壊を意味します。' },
+      { id: 'm17', name: 'XVII. 星 (The Star)', type: 'major', isCourt: false, up: '希望、ひらめき、願いが叶う、吉兆、理想、明るい未来', rev: '失望、絶望、無気力、高望み、見損ない', desc: '大きな星の下で、裸の女性が大地と水脈に水を注いでいます。希望、インスピレーション、浄化、そして明るい未来への導きを象徴します。' },
+      { id: 'm18', name: 'XVIII. 月 (The Moon)', type: 'major', isCourt: false, up: '不安、迷い、幻滅、現実逃避、潜在的な危険、トラウマ', rev: '不安の解消、明瞭、過去からの脱却、徐々に好転', desc: '月夜に吠える犬と狼、水から這い出るザリガニが描かれています。見えない危険、潜在意識、不安、幻想、迷いを表します。' },
+      { id: 'm19', name: 'XIX. 太陽 (The Sun)', type: 'major', isCourt: false, up: '成功、誕生、祝福、約束された将来、喜び、幸福', rev: '不調、落胆、衰退、堕胎、延期、失敗', desc: '大きな太陽の下で、白馬に乗った裸の子供が無邪気に喜んでいます。成功、生命力、祝福、隠し事のない明るさと幸福を象徴します。' },
+      { id: 'm20', name: 'XX. 審判 (Judgement)', type: 'major', isCourt: false, up: '復活、結果、発展、覚醒、奇跡、やり直し', rev: '悔恨、行き詰まり、悪い知らせ、再起不能、未練', desc: '大天使ガブリエルのラッパの音で、人々が棺から蘇っています。復活、過去の清算と報い、最終的な決断、そして覚醒を意味します。' },
+      { id: 'm21', name: 'XXI. 世界 (The World)', type: 'major', isCourt: false, up: '成就、完成、完全、総合、完璧、ハッピーエンド', rev: '未完成、中途半端、不完全、低迷、妥協', desc: '月桂樹のリースの中で踊る人物と、四隅に四大元素の象徴（獅子、牡牛、人、鷲）。完成、調和、統合、完璧なハッピーエンドを示します。' },
+
+      // 小アルカナ：ワンド (火)
+      { id: 'w1', name: 'ワンドのエース', type: 'fire', isCourt: false, up: '情熱の始まり、新しい挑戦、創造力、エネルギー', rev: 'やる気の喪失、計画の遅れ、エネルギー不足', desc: '雲の中から手が現れ、葉のついたワンド（杖）を握っています。情熱とエネルギーの源、新しい行動の始まりを象徴します。' },
+      { id: 'w2', name: 'ワンドの2', type: 'fire', isCourt: false, up: '計画、展望、世界を広げる、次のステップへの準備', rev: '予期せぬトラブル、計画の頓挫、視野の狭さ', desc: '城壁から広大な海を見渡す地球儀を持った男。今の成果に満足せず、次の目標や広い世界への展望を描いている状態です。' },
+      { id: 'w3', name: 'ワンドの3', type: 'fire', isCourt: false, up: '発展、ビジネスの成功、協力、未来への展望', rev: '遅延、協力不足、過去への執着、停滞', desc: '崖の上から、海を往来する船を見守る男。自分のビジネスや計画が軌道に乗り、さらなる発展と未来の展望を待つ姿です。' },
+      { id: 'w4', name: 'ワンドの4', type: 'fire', isCourt: false, up: '平和、休息、祝福、安定した基盤、歓迎', rev: '不安定、平和の乱れ、未完成、休息が取れない', desc: '花飾りで飾られた4本のワンドと、背景で祝福する人々。ひとときの平和、休息、お祝い事、安定した基盤の完成を表します。' },
+      { id: 'w5', name: 'ワンドの5', type: 'fire', isCourt: false, up: '競争、葛藤、スポーツ、ライバル、意見の衝突', rev: '内輪もめ、不毛な争い、疲労、競争の回避', desc: '5人の若者がワンドを振り回して揉み合っています。深刻な殺し合いではなく、競争、葛藤、スポーツ的な切磋琢磨や意見の衝突を意味します。' },
+      { id: 'w6', name: 'ワンドの6', type: 'fire', isCourt: false, up: '勝利、凱旋、称賛、リーダーシップ、成功', rev: '敗北、プライドの喪失、評価されない、裏切り', desc: '月桂樹の冠を被り、白馬に乗った凱旋者と周囲の群衆。勝利、周囲からの称賛、リーダーシップの発揮、成功を象徴します。' },
+      { id: 'w7', name: 'ワンドの7', type: 'fire', isCourt: false, up: '優位な立場、防衛、奮闘、信念を貫く', rev: '圧倒される、不利な立場、妥協、自信喪失', desc: '高所から下から突き上げられる6本のワンドに応戦する男。有利な立場にありながらも、地位を守るための防衛や孤軍奮闘を表します。' },
+      { id: 'w8', name: 'ワンドの8', type: 'fire', isCourt: false, up: '急展開、スピーディな進行、良い知らせ、直感', rev: '停滞、遅れ、コミュニケーション不足、性急な行動', desc: '空を飛んでくる8本のワンド。人物が描かれておらず、事態の急展開、スピード、良い知らせの素早い到来を意味します。' },
+      { id: 'w9', name: 'ワンドの9', type: 'fire', isCourt: false, up: '備え、警戒、粘り強さ、経験を活かす', rev: '過労、被害妄想、防衛過剰、諦め', desc: '頭に包帯を巻き、傷つきながらもワンドを持って警戒する男。過去の経験からの備え、粘り強さ、最後の試練への防衛を示します。' },
+      { id: 'w10', name: 'ワンドの10', type: 'fire', isCourt: false, up: 'プレッシャー、重圧、抱え込みすぎ、過労', rev: '重荷から解放される、責任を投げ出す、限界', desc: '10本の重いワンドを一人で抱えて歩く男。成功したものの、重圧やプレッシャー、責任を抱え込みすぎている状態を象徴します。' },
+      { id: 'wp', name: 'ワンドのページ', type: 'fire', isCourt: true, up: '探求心、ワクワクする知らせ、情熱的な若者', rev: '優柔不断、悪い知らせ、落ち着きがない', desc: 'ワンドを両手で持ち、興味深そうに見つめる若者。情熱の芽生え、好奇心、新しいチャレンジやワクワクする知らせを表します。' },
+      { id: 'wn', name: 'ワンドのナイト', type: 'fire', isCourt: true, up: '行動力、野心、情熱的でスピーディな前進', rev: '無謀、衝動的、暴走、怒りっぽい', desc: 'ワンドを持ち、荒野を馬で駆ける若き騎士。圧倒的な行動力、スピーディな前進、野心と熱い情熱を象徴します。' },
+      { id: 'wq', name: 'ワンドのクイーン', type: 'fire', isCourt: true, up: '魅力、カリスマ性、自信、明るく面倒見が良い', rev: '嫉妬、わがまま、おせっかい、感情的', desc: 'ひまわりを手にし、黒猫を伴って玉座に座る女王。太陽のような魅力、カリスマ性、明るさと自信、面倒見の良さを示します。' },
+      { id: 'wk', name: 'ワンドのキング', type: 'fire', isCourt: true, up: 'カリスマ、決断力、情熱的なリーダー、権力', rev: '独裁的、厳しすぎる、傲慢、強引', desc: '火のトカゲ（サラマンダー）を足元に、玉座に座る王。強い意志、リーダーシップ、情熱をもって他者を導く権力とカリスマを表します。' },
+
+      // 小アルカナ：カップ (水)
+      { id: 'c1', name: 'カップのエース', type: 'water', isCourt: false, up: '愛の始まり、豊かな感情、喜び、受容', rev: '感情の枯渇、自己中心的、愛の欠弱、不安定', desc: '雲の中から手が現れ、水（感情）が溢れるカップを持っています。愛の始まり、豊かな感情の源、喜びと受容の心を象徴します。' },
+      { id: 'c2', name: 'カップの2', type: 'water', isCourt: false, up: '愛、友情、パートナーシップ、共感、絆', rev: '不和、すれ違い、関係の悪化、別れ', desc: '互いにカップを交わす男女と、中央のカドゥケウスの杖（和解の象徴）。深い絆、愛、パートナーシップ、共感を表します。' },
+      { id: 'c3', name: 'カップの3', type: 'water', isCourt: false, up: 'お祝い、コミュニティ、友情、祝賀会、喜びの共有', rev: '暴飲暴食、快楽主義、孤立、仲違い', desc: '収穫物の中で、3人の女性がカップを掲げて楽しく踊っています。お祝い、喜びの共有、豊かなコミュニティや友情を示します。' },
+      { id: 'c4', name: 'カップの4', type: 'water', isCourt: false, up: '倦怠期、不満、無関心、見落とし、瞑想', rev: '新しい気づき、チャンスを掴む、動き出す', desc: '木の下で腕を組み座り込む男。雲から差し出された新しいカップ（チャンス）に気づかず、不満や無関心、倦怠感を抱えています。' },
+      { id: 'c5', name: 'カップの5', type: 'water', isCourt: false, up: '喪失感、悲しみ、後悔、ネガティブな部分に目が行く', rev: '立ち直る、希望を見出す、過去を乗り越える', desc: '倒れた3つのカップを悲しげに見つめる黒マントの男。背後にある倒れていない2つのカップ（残された希望）に気づけない喪失感を表します。' },
+      { id: 'c6', name: 'カップの6', type: 'water', isCourt: false, up: 'ノスタルジー、過去の思い出、幼なじみ、純粋な愛', rev: '過去への執着、未来へ進めない、トラウマ', desc: '古い庭園で、子供がもう一人の子供に花入りのカップを渡しています。ノスタルジー、過去の良い思い出、純粋さや故郷を象徴します。' },
+      { id: 'c7', name: 'カップの7', type: 'water', isCourt: false, up: '選択肢の多さ、妄想、幻想、迷い、夢見がち', rev: '現実を見る、決断する、迷いが晴れる', desc: '雲の上に浮かぶ、宝や蛇など様々なものが入った7つのカップを見る男。迷い、幻想、多すぎる選択肢による混乱を意味します。' },
+      { id: 'c8', name: 'カップの8', type: 'water', isCourt: false, up: '旅立ち、現状からの離脱、より高い目標を求める', rev: '現状維持、諦めきれない、逃避', desc: '綺麗に積み上げられたカップを残し、杖をついて山へ旅立つ男。現状への未練を断ち、より高い次元を求めて離脱する姿です。' },
+      { id: 'c9', name: 'カップの9', type: 'water', isCourt: false, up: '願望成就、満足、物質的・精神的な豊かさ', rev: '強欲、傲慢、表面的な満足、不満', desc: '9つのカップを背に並べ、満足げに腕を組んで座るふくよかな男。「ウィッシュ・カード」とも呼ばれ、願望成就と豊かさを示します。' },
+      { id: 'c10', name: 'カップの10', type: 'water', isCourt: false, up: '家族の幸せ、完全な調和、平和、理想的な環境', rev: '家族のトラブル、不和、崩壊、見せかけの幸せ', desc: '虹の中に輝く10のカップと、その下で喜ぶ夫婦と遊ぶ子供たち。家族の究極の幸せ、完全な調和、平和で理想的な環境を象徴します。' },
+      { id: 'cp', name: 'カップのページ', type: 'water', isCourt: true, up: '想像力、直感、愛らしい知らせ、芸術的センス', rev: '現実逃避、傷つきやすい、感情の未熟さ', desc: 'カップの中から顔を出す魚と対話するように見つめる若者。直感、豊かな想像力、芸術的なインスピレーションや愛の知らせを表します。' },
+      { id: 'cn', name: 'カップのナイト', type: 'water', isCourt: true, up: 'ロマンチスト、プロポーズ、理想を追い求める', rev: '浮気性、不誠実、感情的なごまかし', desc: 'カップを持ち、白馬で静かに進む若き騎士。ロマンチストであり、愛の提案（プロポーズ）や理想を追い求める感情豊かな姿です。' },
+      { id: 'cq', name: 'カップのクイーン', type: 'water', isCourt: true, up: '愛情深い、受容、思いやり、直感力に優れる', rev: '依存、過干渉、ヒステリック、感情の暴走', desc: '豪華な装飾のカップを見つめ、海辺の玉座に座る女王。深い愛情、受容、思いやり、そして優れた直感力と共感性を象徴します。' },
+      { id: 'ck', name: 'カップのキング', type: 'water', isCourt: true, up: '寛大、感情のコントロール、包容力、良き助言者', rev: '冷酷、感情の抑圧、支配的、偽善', desc: '荒れる海に浮かぶ玉座に座り、カップと笏を持つ王。感情の波をうまくコントロールする寛大さ、包容力、良き助言者としての姿です。' },
+
+      // 小アルカナ：ソード (風)
+      { id: 's1', name: 'ソードのエース', type: 'air', isCourt: false, up: '知性、決断、真実、新たな思考の始まり', rev: '混乱、誤った判断、暴力、冷酷', desc: '雲の中から手が現れ、王冠とオリーブの枝を貫く剣を握っています。知性、決断力、真実を切り開く力、新たな思考の始まりを象徴します。' },
+      { id: 's2', name: 'ソードの2', type: 'air', isCourt: false, up: '均衡、盲目、バランスを保つ、膠着状態', rev: 'バランスの崩れ、不信感、動き出す（良い場合も悪い場合も）', desc: '目隠しをし、2本の剣を交差させて座る女性と背後の海。外部からの情報を遮断し、感情を抑えてギリギリの均衡を保つ膠着状態です。' },
+      { id: 's3', name: 'ソードの3', type: 'air', isCourt: false, up: '悲しみ、傷心、別れ、痛み、トラウマ', rev: '回復の兆し、悲しみを乗り越える、長引く痛み', desc: '雨が降る空を背景に、3本の剣が突き刺さった真っ赤なハート。悲しみ、傷心、別れ、痛みやトラウマをストレートに表すカードです。' },
+      { id: 's4', name: 'ソードの4', type: 'air', isCourt: false, up: '休息、回復、退却、瞑想、静止', rev: '活動再開、不本意な休息、強制的な休止', desc: '教会のステンドグラスの下で、剣と共に横たわる騎士の像。戦いから一時退却し、回復と瞑想のための休息をとる静止状態です。' },
+      { id: 's5', name: 'ソードの5', type: 'air', isCourt: false, up: '敗北、不名誉、卑怯な手段、空しい勝利', rev: '和解、後悔、争いの終結、惨めな敗北', desc: '奪った剣を持ち勝ち誇る男と、背を向けて去っていく敗者たち。卑怯な手段での勝利、空しさ、敗北、そして不名誉を象徴します。' },
+      { id: 's6', name: 'ソードの6', type: 'air', isCourt: false, up: '移動、出発、困難からの脱出、回復への道', rev: '問題の先送り、行き詰まり、逃げられない状況', desc: '6本の剣が刺さった船を漕ぎ、波立つ水面から静かな水面へ向かう親子。悲しみや困難からの脱出、回復へ向けた移動を表します。' },
+      { id: 's7', name: 'ソードの7', type: 'air', isCourt: false, up: '策略、こそこそする、裏切り、単独行動', rev: '計画の失敗、悪事がバレる、有意義な助言', desc: '敵陣から5本の剣をこっそり持ち去り、振り返りながら逃げる男。策略、ずる賢さ、裏切り、あるいはリスクを伴う単独行動を示します。' },
+      { id: 's8', name: 'ソードの8', type: 'air', isCourt: false, up: '束縛、制限、被害妄想、身動きが取れない', rev: '解放、自由になる、新しい見方、束縛からの脱却', desc: '剣に囲まれ、目隠しをされ縛られた女性。実は足元は縛られておらず、自らの思い込みや被害妄想による束縛、身動きの取れなさを表します。' },
+      { id: 's9', name: 'ソードの9', type: 'air', isCourt: false, up: '絶望、悪夢、不安、悩み、夜も眠れない', rev: '希望の光、不安の解消、事実を受け入れる', desc: '暗いベッドで顔を覆い嘆く人物と、背後に並ぶ9本の剣。絶望、悪夢、深い不安や悩みなど、精神的な苦痛がピークに達した状態です。' },
+      { id: 's10', name: 'ソードの10', type: 'air', isCourt: false, up: '完全な敗北、どん底、終わり、夜明け前', rev: '再生、どん底からの回復、状況の好転', desc: '背中に10本の剣が深く刺さり倒れた男と、遠くの夜明けの空。完全な終わり、徹底的な敗北、どん底ですが、これ以上悪くならないことを示します。' },
+      { id: 'sp', name: 'ソードのページ', type: 'air', isCourt: true, up: '警戒、好奇心、情報の収集、鋭い観察力', rev: '無神経、スパイ、準備不足、悪口', desc: '剣を両手で持ち、風が吹く中で警戒するように周囲を見渡す若者。情報収集、好奇心、鋭い観察力、頭の回転の速さを象徴します。' },
+      { id: 'sn', name: 'ソードのナイト', type: 'air', isCourt: true, up: '論理的、迅速な行動、勇気、直線的な進撃', rev: '無慈悲、衝動的、攻撃的、冷酷', desc: '剣を振りかざし、向かい風の中を白馬で猛烈に突撃する騎士。論理的かつ迅速な行動力、勇気、直線的で容赦のない攻撃性を表します。' },
+      { id: 'sq', name: 'ソードのクイーン', type: 'air', isCourt: true, up: '自立、知性、論理的、厳しさ、批判力', rev: '冷酷、意地悪、過度な批判、悲しみ', desc: '右手に剣を垂直に持ち、左手を差し出して玉座に座る女王。自立、高い知性、論理的な思考、そして嘘を見抜く厳しさと批判力です。' },
+      { id: 'sk', name: 'ソードのキング', type: 'air', isCourt: true, up: '権威、論理的思考、公平な判断、高い知性', rev: '独裁、権力濫用、冷酷な決断、偏見', desc: '剣を右手に持ち、真っ直ぐ前を冷徹に見据える王。知性と論理の頂点であり、権威、公平で客観的な判断力、時に冷徹な決断を示します。' },
+
+      // 小アルカナ：ペンタクル (土)
+      { id: 'p1', name: 'ペンタクルのエース', type: 'earth', isCourt: false, up: '繁栄の始まり、現実的な成功、富、健康', rev: 'チャンスを逃す、金銭的な損失、物質主義', desc: '雲の中から手が現れ、大きなペンタクル（金貨）を捧げ持ち、下には豊かな庭園があります。物質的な繁栄の始まり、富と現実的な成功を象徴します。' },
+      { id: 'p2', name: 'ペンタクルの2', type: 'earth', isCourt: false, up: '柔軟性、バランス、適応、複数のことをこなす', rev: 'バランスを崩す、不器用、自転車操業', desc: '波立つ海を背景に、2つのペンタクルを無限の形（レムニスケート）に操り踊る男。柔軟性、適応力、複数の事柄を同時にこなすバランス感覚です。' },
+      { id: 'p3', name: 'ペンタクルの3', type: 'earth', isCourt: false, up: 'チームワーク、協力、専門技術、計画的、学習', rev: '平凡、妥協、チームの不和、スキル不足', desc: '教会で彫刻師、修道士、設計者の3人が協力して作業をしています。チームワーク、それぞれの専門技術の結集、計画的な協力と学習を表します。' },
+      { id: 'p4', name: 'ペンタクルの4', type: 'earth', isCourt: false, up: '所有欲、保守的、安定、執着、現状維持', rev: '手放す、浪費、強欲、ケチ', desc: 'ペンタクルを頭に乗せ、両手で抱え、両足で踏みつけて固守する男。強い所有欲、保守的な姿勢、物質的な執着、現状維持を象徴します。' },
+      { id: 'p5', name: 'ペンタクルの5', type: 'earth', isCourt: false, up: '貧困、孤立、困難、喪失、助け合い', rev: '状況の好転、援助の手、精神的な豊かさ', desc: '雪が降る中、暖かな教会のステンドグラスの前を通り過ぎる怪我人と貧しい人。物質的な貧困、困難、孤立感、精神的な喪失感を示します。' },
+      { id: 'p6', name: 'ペンタクルの6', type: 'earth', isCourt: false, up: '慈善、寛大、支援、ギブアンドテイク、公平', rev: '不公平、偽善、見返りを求める、借金', desc: '天秤で量りながら、貧しい人々に金貨を施す裕福な商人。慈善、寛大さ、ギブアンドテイクの精神、あるいは公平な分配を意味します。' },
+      { id: 'p7', name: 'ペンタクルの7', type: 'earth', isCourt: false, up: '評価、見直し、忍耐、成果に対する不満と再考', rev: '徒労、中途半端、投資の失敗、怠惰', desc: '育てた作物のペンタクルを見つめ、農具に寄りかかり思い悩む男。これまでの成果に対する評価、忍耐、現状への不満と見直しの時期です。' },
+      { id: 'p8', name: 'ペンタクルの8', type: 'earth', isCourt: false, up: '職人技、勤勉、修行、継続的な努力、集中', rev: '手抜き、野心不足、スキルの無駄遣い', desc: 'ベンチに座り、一枚ずつ熱心にペンタクルを彫る職人。職人技、勤勉な姿勢、コツコツと続ける修行、継続的な努力と深い集中を表します。' },
+      { id: 'p9', name: 'ペンタクルの9', type: 'earth', isCourt: false, up: '物質的な豊かさ、独立、優雅な生活、達成', rev: '浪費、見栄、経済的な依存、不安定', desc: '豊かな葡萄園で、ペンタクルと飼い慣らした鳥と共に立つ優雅な女性。自力で手に入れた物質的な豊かさ、経済的独立、達成と優雅な生活です。' },
+      { id: 'p10', name: 'ペンタクルの10', type: 'earth', isCourt: false, up: '一族の繁栄、遺産、伝統、完全な安定', rev: '家族の不和、伝統の崩壊、遺産相続のトラブル', desc: '生命の樹の形に並んだ10個のペンタクルと、城に集う老若男女と犬。一族の長期的な繁栄、受け継がれる伝統、完全な安定と遺産を象徴します。' },
+      { id: 'pp', name: 'ペンタクルのページ', type: 'earth', isCourt: true, up: '学習、勤勉、現実的な目標、真面目な若者', rev: '怠惰、現実逃避、不真面目、非現実的', desc: '花が咲く野原で、ペンタクルを両手で持ちじっと見つめる若者。学習意欲、勤勉さ、現実的な目標に対する真面目な探求心を示します。' },
+      { id: 'pn', name: 'ペンタクルのナイト', type: 'earth', isCourt: true, up: '忍耐強い、責任感、着実な進歩、信頼できる', rev: '頑固、停滞、怠慢、退屈', desc: '静止した黒馬にまたがり、ペンタクルを手にする騎士。スピードはないものの、忍耐強さ、着実な進歩、責任感があり信頼できる姿です。' },
+      { id: 'pq', name: 'ペンタクルのクイーン', type: 'earth', isCourt: true, up: '豊かさ、実用的、母性、寛大、自然を愛する', rev: '浪費癖、過保護、依存、物質主義', desc: 'ウサギや花に囲まれた豪華な玉座で、ペンタクルを優しく見つめる女王。実用的な豊かさ、母性、寛大さ、自然を愛する地に足の着いた姿です。' },
+      { id: 'pk', name: 'ペンタクルのキング', type: 'earth', isCourt: true, up: '成功者、富の構築、頼りになる権力者、堅実', rev: '強欲、腐敗、頑固、物質への執着', desc: '葡萄の装飾が施された城の玉座で、ペンタクルと笏を持つ王。ビジネスにおける究極の成功者、富の構築、頼りになる堅実な権力者を表します。' }
+    ];
+
+    const ALL_MEANINGS = TAROT_DECK.flatMap(card => [card.up, card.rev]);
+
+    const NUMBER_MEANINGS = [
+      { num: 'エース (1)', text: '始まり、純粋なエネルギーの根源、潜在力、新しいサイクルの種' },
+      { num: '2', text: 'バランス、選択、対立と調和、二面性、パートナーシップ' },
+      { num: '3', text: '発展、成長、最初の成果、協力、三位一体、創造性の広がり' },
+      { num: '4', text: '安定、基盤の確立、固定、秩序、時に停滞や休息、安心感' },
+      { num: '5', text: '変化、葛藤、困難、不均衡、自由への欲求、古い枠組みの打破' },
+      { num: '6', text: '調和、回復、バランスの取れた状態、コミュニケーション、問題解決' },
+      { num: '7', text: '評価、見直し、探求、内省、一時停止して考える時期、知恵' },
+      { num: '8', text: '継続、努力、集中、リズミカルな動き、再評価、職人技' },
+      { num: '9', text: '達成、完了間近、単独、高み、理想、独立、自己実現' },
+      { num: '10', text: '完成、過剰、サイクルの終わりと次の始まり、極地、限界' }
+    ];
+
+    const COURT_MEANINGS = [
+      { role: 'ペイジ (Page)', text: '子供や若者、メッセンジャー、未熟だが純粋な可能性、好奇心、学び、新しい情報' },
+      { role: 'ナイト (Knight)', text: '青年の行動力、前進、特定の方向への強いエネルギー、極端さ、変化をもたらす人' },
+      { role: 'クイーン (Queen)', text: '成熟した女性、受容、育成、内面的な理解、感情の豊かさとコントロール、包容力' },
+      { role: 'キング (King)', text: '成熟した男性、権威、社会的な成功、支配、責任、論理的な判断、具現化する力' }
+    ];
+
+    // --- 拡張版スプレッドデータ (22種) ---
+    const SPREADS = [
+      {
+        id: 'one_oracle', category: '運勢',
+        name: 'ワンオラクル (1枚引き) ★',
+        cardCount: 1,
+        purpose: '今日の運勢、Yes/No、シンプルで明確な答えが欲しい時',
+        description: '最もシンプルで基本的なスプレッドです。1枚のカードから直感的にメッセージを受け取ります。初心者の練習や、毎日の運勢を占うのにも最適です。',
+        advice: 'シンプルゆえに、出たカードのインスピレーションを素直に受け取るのがコツです。質問は「〜するにはどうすればいい？」など、焦点を絞って具体的にすると良いでしょう。',
+        positions: [ { num: 1, text: '質問に対する答え・結果', x: 50, y: 50 } ]
+      },
+      {
+        id: 'jupiter', category: '運勢',
+        name: 'ジュピター (5枚引き)',
+        cardCount: 5,
+        purpose: '今後の運気の流れ、幸運を引き寄せるための鍵を知りたい時',
+        description: '幸運の星・木星（ジュピター）の名を冠した展開法です。運勢の全体的な流れと、幸運を掴むための具体的なヒントを得るのに適しています。',
+        advice: 'たとえネガティブなカードが出ても、「これを乗り越えれば運が開ける」という前向きな視点でリーディングすることが大切です。',
+        positions: [
+          { num: 1, text: '過去の運気', x: 20, y: 50 },
+          { num: 2, text: '現在の運気', x: 50, y: 80 },
+          { num: 3, text: '未来の運気', x: 80, y: 50 },
+          { num: 4, text: '幸運の鍵・アドバイス', x: 50, y: 20 },
+          { num: 5, text: '最終的な結果', x: 50, y: 50 }
+        ]
+      },
+      {
+        id: 'seven_days', category: '運勢',
+        name: 'セブンディズ (7枚引き)',
+        cardCount: 7,
+        purpose: '明日からの1週間（7日間）の毎日の運勢を知りたい時',
+        description: '1日1枚ずつ、計7枚のカードで1週間の流れを見るスプレッドです。月曜〜日曜など、曜日ごとのテーマや出来事を占います。',
+        advice: '毎日の運勢だけでなく、1週間全体を通してどんなカード（大アルカナが多い、特定のマークが多い等）が出ているかで、その週のトーンを読み解きましょう。',
+        positions: [
+          { num: 1, text: '1日目', x: 10, y: 50 }, { num: 2, text: '2日目', x: 23, y: 30 },
+          { num: 3, text: '3日目', x: 36, y: 50 }, { num: 4, text: '4日目', x: 50, y: 30 },
+          { num: 5, text: '5日目', x: 63, y: 50 }, { num: 6, text: '6日目', x: 76, y: 30 },
+          { num: 7, text: '7日目', x: 90, y: 50 }
+        ]
+      },
+      {
+        id: 'horoscope', category: '運勢',
+        name: 'ホロスコープ (13枚引き)',
+        cardCount: 13,
+        purpose: '年間の運勢、人生の全体的なテーマ、特定の期間の総合運を見たい時',
+        description: '西洋占星術の12ハウスになぞらえて、12の分野と全体運を読み解くダイナミックなスプレッドです。お正月や誕生日など、節目に全体の運勢を見るのによく使われます。',
+        advice: '全てを細かく読むと時間がかかるため、特に大アルカナが出ている位置や、ネガティブなカードが出ている位置（課題となる分野）に注目してリーディングするとメリハリがつきます。',
+        positions: [
+          { num: 1, text: '自己', x: 10, y: 50 }, { num: 2, text: '金運', x: 18, y: 75 },
+          { num: 3, text: '学習', x: 38, y: 90 }, { num: 4, text: '家庭', x: 62, y: 90 },
+          { num: 5, text: '恋愛', x: 82, y: 75 }, { num: 6, text: '労働', x: 90, y: 50 },
+          { num: 7, text: '対人', x: 82, y: 25 }, { num: 8, text: '共有', x: 62, y: 10 },
+          { num: 9, text: '探求', x: 38, y: 10 }, { num: 10, text: '仕事', x: 18, y: 25 },
+          { num: 11, text: '友人', x: 28, y: 40 }, { num: 12, text: '潜在意識', x: 28, y: 60 },
+          { num: 13, text: '全体運', x: 50, y: 50 }
+        ]
+      },
+      {
+        id: 'simple_cross', category: '自分自身の悩み',
+        name: 'シンプルクロス (2枚引き)',
+        cardCount: 2,
+        purpose: '自分の悩みの核心と、それに対する直接的なアドバイスが欲しい時',
+        description: '2枚のカードを十字に重ねて置くスプレッドです。現状とそれを遮るもの（または対策）をシンプルに対比させます。',
+        advice: '2枚のカードの相性（スートの組み合わせや強弱）を見ることで、直面している問題の根深さや本質がわかります。',
+        positions: [
+          { num: 1, text: '現状・問題の核心', x: 50, y: 50 },
+          { num: 2, text: '障害・対策', x: 50, y: 50, rotate: 90 }
+        ]
+      },
+      {
+        id: 'golden_trine', category: '自分自身の悩み',
+        name: 'ゴールデントリン (3枚引き)',
+        cardCount: 3,
+        purpose: '自分自身の過去・現在・未来の成長プロセスを確認したい時',
+        description: '黄金の三角形（トリン）と呼ばれる配置で、自己の精神的な成長や悩みの解決プロセスを見ます。',
+        advice: 'スリーカードと似ていますが、出来事よりも「精神面や自己の内面の変化」にフォーカスしてリーディングします。',
+        positions: [
+          { num: 1, text: '過去・根本原因', x: 25, y: 70 },
+          { num: 2, text: '現在・現状', x: 75, y: 70 },
+          { num: 3, text: '未来・結果', x: 50, y: 20 }
+        ]
+      },
+      {
+        id: 'cross_spread', category: '自分自身の悩み',
+        name: 'クロススプレッド (4枚引き)',
+        cardCount: 4,
+        purpose: '悩みの原因から対策までをバランスよく見渡したい時',
+        description: '十字型に4枚のカードを展開し、自己の悩みに対する多角的な視点を提供します。',
+        advice: '縦のライン（原因と対策）と横のライン（過去と未来）の交差点に自分自身がいるとイメージして読むと整理しやすいです。',
+        positions: [
+          { num: 1, text: '過去・原因', x: 25, y: 50 },
+          { num: 2, text: '現在・現状', x: 50, y: 50 },
+          { num: 3, text: '未来・結果', x: 75, y: 50 },
+          { num: 4, text: '対策・アドバイス', x: 50, y: 80 }
+        ]
+      },
+      {
+        id: 'spiritual', category: '自分自身の悩み',
+        name: 'スピリチュアルスプレッド (7枚引き)',
+        cardCount: 7,
+        purpose: '魂の成長、スピリチュアルな課題、深い内面と向き合いたい時',
+        description: '自分自身の顕在意識から潜在意識、そして超意識（ハイヤーセルフ）からのメッセージを受け取るための深いスプレッドです。',
+        advice: '物質的な結果や吉凶よりも、「この悩みから何を学ぶべきか」という精神的な気づきを中心にリーディングしてください。',
+        positions: [
+          { num: 1, text: '過去のトラウマ', x: 15, y: 20 },
+          { num: 2, text: '現在の精神状態', x: 15, y: 80 },
+          { num: 3, text: '顕在意識の望み', x: 40, y: 50 },
+          { num: 4, text: '潜在意識の恐れ', x: 65, y: 80 },
+          { num: 5, text: '必要な学び', x: 65, y: 20 },
+          { num: 6, text: '超意識の導き', x: 85, y: 50 },
+          { num: 7, text: '最終的な悟り', x: 50, y: 50 }
+        ]
+      },
+      {
+        id: 'two_mind', category: '対人関係',
+        name: 'ツーマインド (2枚引き)',
+        cardCount: 2,
+        purpose: '相手の顕在意識（建前）と潜在意識（本音）を知りたい時',
+        description: '上下に2枚展開し、人の心にある2つの層（意識と無意識）を読み解きます。恋愛や人間関係の相手の気持ちを見るのに最適です。',
+        advice: '上下のカードが矛盾している場合は、相手の心が葛藤している証拠です。行動のベースとなる下のカード（潜在意識）をより重視します。',
+        positions: [
+          { num: 1, text: '顕在意識（表向きの気持ち）', x: 50, y: 30 },
+          { num: 2, text: '潜在意識（本当の気持ち）', x: 50, y: 70 }
+        ]
+      },
+      {
+        id: 'diamond_cross', category: '対人関係',
+        name: 'ダイヤモンドクロス (4枚引き)',
+        cardCount: 4,
+        purpose: '自分と相手の気持ち、そして二人の関係の未来を知りたい時',
+        description: 'ひし形に4枚を展開し、対人関係（特に恋愛）の現状と相手の気持ちを明確にするのに特化したスプレッドです。',
+        advice: '左（自分）と右（相手）のカードの向き合い方や温度差に注目すると、現在の関係性のバランスがよくわかります。',
+        positions: [
+          { num: 1, text: '自分の気持ち', x: 25, y: 50 },
+          { num: 2, text: '相手の気持ち', x: 75, y: 50 },
+          { num: 3, text: '二人の現状', x: 50, y: 75 },
+          { num: 4, text: '二人の未来', x: 50, y: 25 }
+        ]
+      },
+      {
+        id: 'seven_telling', category: '対人関係',
+        name: 'セブンテーリング (7枚引き)',
+        cardCount: 7,
+        purpose: '特定の相手との関係性、進展のプロセスを詳しく知りたい時',
+        description: '7枚のカードを使って、自分と相手の状況から最終結果までを詳細にストーリー仕立てで読み解きます。',
+        advice: '自分の状態と相手の状態を比較し、それが未来へどう繋がるかを意識してください。二人の間の障害（4）が重要な鍵になります。',
+        positions: [
+          { num: 1, text: '二人の過去', x: 20, y: 80 },
+          { num: 2, text: '二人の現在', x: 50, y: 80 },
+          { num: 3, text: '二人の未来', x: 80, y: 80 },
+          { num: 4, text: '自分の状況', x: 35, y: 50 },
+          { num: 5, text: '相手の状況', x: 65, y: 50 },
+          { num: 6, text: '二人の障害', x: 50, y: 20 },
+          { num: 7, text: '最終結果', x: 80, y: 20 }
+        ]
+      },
+      {
+        id: 'two_oracle', category: '問題解決',
+        name: 'ツーオラクル (2枚引き) ★',
+        cardCount: 2,
+        purpose: '結果とそれに対する対策をシンプルに知りたい時',
+        description: '結果と対策の2枚だけを引く、非常に実用的でわかりやすいスプレッドです。',
+        advice: '結果が悪くても、対策のカードをしっかり読み解くことで未来は変えられる（回避できる）と考えましょう。',
+        positions: [
+          { num: 1, text: '結果・現状', x: 35, y: 50 },
+          { num: 2, text: '対策・アドバイス', x: 65, y: 50 }
+        ]
+      },
+      {
+        id: 'three_cards', category: '問題解決',
+        name: 'スリーカード (3枚引き) ★',
+        cardCount: 3,
+        purpose: '過去・現在・未来の流れを知りたい時、原因と結果を分析したい時',
+        description: '時間の流れや、物事のプロセスを簡潔に読み解くスプレッドです。「原因・現状・結果」にアレンジして使うこともできます。',
+        advice: '3枚のカードがどのように変化しているかという「ストーリーの流れ」を意識して読むと説得力が出ます。',
+        positions: [
+          { num: 1, text: '過去 (原因)', x: 20, y: 50 },
+          { num: 2, text: '現在 (現状)', x: 50, y: 50 },
+          { num: 3, text: '未来 (結果)', x: 80, y: 50 }
+        ]
+      },
+      {
+        id: 'four_cards', category: '問題解決',
+        name: 'フォーカード (4枚引き) ★',
+        cardCount: 4,
+        purpose: '過去から未来への流れに加え、具体的な解決策が欲しい時',
+        description: 'スリーカードに「対策」の1枚を加えたスプレッドです。問題解決にとても役立ちます。',
+        advice: '時系列の流れを追いつつ、最終的な未来を変えるための「対策(3)」に重きを置いて読みます。',
+        positions: [
+          { num: 1, text: '過去', x: 15, y: 50 },
+          { num: 2, text: '現在', x: 38, y: 50 },
+          { num: 3, text: '対策', x: 62, y: 50 },
+          { num: 4, text: '未来', x: 85, y: 50 }
+        ]
+      },
+      {
+        id: 'greek_cross', category: '問題解決',
+        name: 'ギリシャ十字 (5枚引き)',
+        cardCount: 5,
+        purpose: '問題の現状と解決策、そして最終的な結果を知りたい時',
+        description: '正十字の形に展開します。特定の問題に対して、障害となっているものと解決の糸口を明確にします。',
+        advice: '中央のカード（現状）を取り囲むようにカードがあるため、現状からどう動くべきかが直感的にわかります。',
+        positions: [
+          { num: 1, text: '現状', x: 50, y: 50 },
+          { num: 2, text: '障害・課題', x: 25, y: 50 },
+          { num: 3, text: '傾向・未来', x: 75, y: 50 },
+          { num: 4, text: '対策', x: 50, y: 75 },
+          { num: 5, text: '最終結果', x: 50, y: 25 }
+        ]
+      },
+      {
+        id: 'pyramid', category: '問題解決',
+        name: 'ピラミッド (6枚引き)',
+        cardCount: 6,
+        purpose: '問題の基礎原因から最終的な解決に至るプロセスを見たい時',
+        description: 'ピラミッド状にカードを積み上げます。下段が基礎（問題の原因）、中段が推移・対策、上段が結果を表します。',
+        advice: '下の段にあるカードほど、問題の根本的・無意識的な要素を表しています。基礎が揺らいでいないか確認しましょう。',
+        positions: [
+          { num: 1, text: '原因・過去', x: 25, y: 80 },
+          { num: 2, text: '現状', x: 50, y: 80 },
+          { num: 3, text: '周囲の環境', x: 75, y: 80 },
+          { num: 4, text: '近い未来', x: 38, y: 50 },
+          { num: 5, text: '対策', x: 62, y: 50 },
+          { num: 6, text: '最終結果', x: 50, y: 20 }
+        ]
+      },
+      {
+        id: 'two_choices', category: '問題解決',
+        name: '二者択一 (5枚引き) ★',
+        cardCount: 5,
+        purpose: 'AかBか、2つの選択肢で迷っている時、どちらの道を選ぶべきか決めたい時',
+        description: 'V字型にカードを展開し、それぞれの選択肢を選んだ場合の未来と結果を比較します。',
+        advice: '両方の道が悪い結果（または良い結果）になることもあります。その場合は、どちらがより自分にとって成長できるかという視点で比較検討します。',
+        positions: [
+          { num: 1, text: '現状', x: 50, y: 85 },
+          { num: 2, text: '選択肢Aの経過', x: 30, y: 50 },
+          { num: 3, text: '選択肢Bの経過', x: 70, y: 50 },
+          { num: 4, text: '選択肢Aの結果', x: 15, y: 15 },
+          { num: 5, text: '選択肢Bの結果', x: 85, y: 15 }
+        ]
+      },
+      {
+        id: 'hexagram', category: '問題解決',
+        name: 'ヘキサグラム (7枚引き)',
+        cardCount: 7,
+        purpose: '過去・現在・未来の流れと、対応策を総合的に知りたい時',
+        description: '六芒星（ヘキサグラム）の形にカードを展開します。自分と相手、精神と物質など、2つの要素のバランスと関係性を読み解くのにも適しています。',
+        advice: '「過去(1)・現在(2)・未来(3)」の三角形と、「環境(5)・自分の心(6)・対策(4)」の三角形のバランスを見ます。',
+        positions: [
+          { num: 1, text: '過去', x: 50, y: 15 },
+          { num: 2, text: '現在', x: 75, y: 70 },
+          { num: 3, text: '未来', x: 25, y: 70 },
+          { num: 4, text: '対応策', x: 50, y: 85 },
+          { num: 5, text: '周囲の状況', x: 25, y: 30 },
+          { num: 6, text: '自分の本心', x: 75, y: 30 },
+          { num: 7, text: '最終結果', x: 50, y: 50 }
+        ]
+      },
+      {
+        id: 'horseshoe', category: '問題解決',
+        name: 'ホースショー (7枚引き)',
+        cardCount: 7,
+        purpose: '問題の解決策やアドバイスが欲しい時、状況の推移を知りたい時',
+        description: '幸運のシンボルである馬蹄（U字）の形にカードを展開します。障害となっているものと、それに対する具体的なアドバイスを得るのに適しています。',
+        advice: 'ケルト十字よりも少しシンプルに全体像を掴みたい時に便利です。「障害(6)」と「アドバイス(4)」の組み合わせを読むことが鍵です。',
+        positions: [
+          { num: 1, text: '過去', x: 15, y: 80 },
+          { num: 2, text: '現在', x: 15, y: 45 },
+          { num: 3, text: '近い未来', x: 30, y: 15 },
+          { num: 4, text: 'アドバイス', x: 50, y: 10 },
+          { num: 5, text: '周囲の状況', x: 70, y: 15 },
+          { num: 6, text: '障害・問題', x: 85, y: 45 },
+          { num: 7, text: '最終結果', x: 85, y: 80 }
+        ]
+      },
+      {
+        id: 'celtic_cross', category: '問題解決',
+        name: 'ケルト十字 (10枚引き)',
+        cardCount: 10,
+        purpose: '問題の全体像を深く詳細に分析したい時、特定のテーマについて深く掘り下げたい時',
+        description: 'タロット占いで最も有名で詳細なスプレッドの一つです。自分自身の深層心理から、過去の原因、周囲の環境、最終予測までを多角的に読み解き、具体的な解決策を導き出します。',
+        advice: '枚数が多いので、まずは「最終結果(10)」と「キーカード(1, 2)」を見て全体像を掴むのがコツです。',
+        positions: [
+          { num: 1, text: '現状・テーマ', x: 35, y: 50 },
+          { num: 2, text: '障害・課題', x: 35, y: 50, rotate: 90 },
+          { num: 3, text: '顕在意識', x: 35, y: 15 },
+          { num: 4, text: '潜在意識', x: 35, y: 85 },
+          { num: 5, text: '過去', x: 10, y: 50 },
+          { num: 6, text: '近い未来', x: 60, y: 50 },
+          { num: 7, text: '本人の立場', x: 88, y: 85 },
+          { num: 8, text: '周囲の環境', x: 88, y: 63 },
+          { num: 9, text: '願望や恐れ', x: 88, y: 41 },
+          { num: 10, text: '最終結果', x: 88, y: 19 }
+        ]
+      }
+    ];
+
+    // ==========================================
+    // ユーティリティ・共有コンポーネント
+    // ==========================================
+
+    const formatCardTitle = (name) => {
+      const match = name.match(/([IVX0-9]+)?\.?\s*(.+?)\s*\((.+)\)/);
+      if (match) return `${match[3]}（${match[2]}）`;
+      return name;
+    };
+
+    const generateAdvice = (card, isReversed, theme) => {
+      const keywords = isReversed ? card.rev.split('、') : card.up.split('、');
+      const cleanKw = (kw) => kw ? kw.replace(/[「」『』【】]/g, '').trim() : '';
+      const kw1 = cleanKw(keywords[0]) || '';
+      const kw2 = cleanKw(keywords.length > 1 ? keywords[1] : kw1);
+      const kwLast = cleanKw(keywords[keywords.length - 1] || kw1);
+
+      switch(theme) {
+        case '恋愛': return `【質問例：あの人との恋の行方は？／新しい出会いはありますか？】\n恋愛面において、「${kw1}」が重要な鍵となります。${isReversed ? '相手との関係やすれ違いに少し注意が必要な時期ですが、' : 'お互いの関係が前進していく中で、'}「${kw2}」を意識して行動することで、最終的に「${kwLast}」という状況を引き寄せる可能性が高いでしょう。`;
+        case '結婚': return `【質問例：この人との結婚はどうなりますか？／結婚の時期は？】\n結婚という人生の大きな節目において、このカードは「${kw1}」というテーマを強く示唆しています。結婚への道のりや家庭を築くプロセスにおいて「${kw2}」にしっかりと向き合うことで、将来的に「${kwLast}」という形を築き上げることができるでしょう。`;
+        case '未来': return `【質問例：この先の展開はどうなりますか？】\n「${kw1}」が鍵となる展開です。今後の流れとしては「${kw2}」といった要素が強まるため、最終的に「${kwLast}」という状況に向かう可能性が高いでしょう。この方向性を意識して準備を整えてみてください。`;
+        case '運命': return `【質問例：私に与えられた宿命や運命の流れは？】\n大局的な運命の流れとして、今あなたには「${kw1}」というテーマが与えられています。${isReversed ? '少し抗いがたい波や停滞を感じるかもしれませんが、' : 'スムーズな導きの中で、'}「${kw2}」を経験することが成長に繋がります。`;
+        case '決断': return `【質問例：どちらの道を選ぶべきですか？】\n決断の指針として、このカードは「${kw1}」を重視するようアドバイスしています。迷いが生じたときは、自分にとっての「${kwLast}」は何か？を問い直すことで、後悔のない選択ができるはずです。`;
+        case '多角分析': return `【質問例：この状況を別の視点から見るとどうですか？】\n表面的な出来事の裏に、「${kw1}」という別の側面が隠れていることを指摘しています。相手の立場や異なる視座から「${kw2}」について掘り下げることで、状況を突破する糸口が見えてきます。`;
+        case '深層': return `【質問例：私の心の奥底にある本当の思いは？】\nあなたの無意識の領域には「${kw1}」への強い欲求や恐れが潜んでいます。自分でも気づかないうちに「${kwLast}」を求めている（または避けている）自分を客観視することが、心の平穏をもたらします。`;
+        case '年間運勢': return `【質問例：今年の総合的なテーマや運勢は？】\nこの1年間を貫くメインテーマは「${kw1}」です。時期によって波はありますが、年間を通じて「${kw2}」を心がけて過ごすことで、最終的に「${kwLast}」という実りを得ることができるでしょう。`;
+        default: return "";
+      }
+    };
+
+    const getCardImageUrl = (id) => {
+      const baseUrl = "https://www.sacred-texts.com/tarot/pkt/img/";
+      let filename = "";
+      if (id.startsWith('m')) {
+        const num = parseInt(id.replace('m', ''));
+        filename = `ar${num.toString().padStart(2, '0')}.jpg`;
+      } else {
+        const suitChar = id[0];
+        const valStr = id.substring(1);
+        let suitPrefix = "";
+        if (suitChar === 'w') suitPrefix = "wa";
+        if (suitChar === 'c') suitPrefix = "cu";
+        if (suitChar === 's') suitPrefix = "sw";
+        if (suitChar === 'p') suitPrefix = "pe";
+        let valCode = "";
+        if (valStr === 'p') valCode = "pa";
+        else if (valStr === 'n') valCode = "kn";
+        else if (valStr === 'q') valCode = "qu";
+        else if (valStr === 'k') valCode = "ki";
+        else if (valStr === '1') valCode = "ac"; // ← ★この1行を追加します
+        else valCode = valStr.padStart(2, '0');
+        filename = `${suitPrefix}${valCode}.jpg`;
+      }
+      return `${baseUrl}${filename}`;
+    };
+
+    const SuitIcon = ({ type, isReversed, className = "w-12 h-12" }) => {
+      const rotationClass = isReversed ? "rotate-180" : "";
+      const combinedClass = `${className} ${rotationClass} transition-transform duration-500 flex items-center justify-center text-5xl`;
+      switch(type) {
+        case 'major': return <div className={combinedClass}>🔮</div>;
+        case 'fire': return <div className={combinedClass}>🔥</div>;
+        case 'water': return <div className={combinedClass}>💧</div>;
+        case 'air': return <div className={combinedClass}>⚔️</div>;
+        case 'earth': return <div className={combinedClass}>🪙</div>;
+        default: return null;
+      }
+    };
+
+    const CardDisplay = ({ card, isReversed }) => {
+      const [imageError, setImageError] = useState(false);
+      const imgUrl = getCardImageUrl(card.id);
+      useEffect(() => { setImageError(false); }, [card.id]);
+
+      return (
+        <div className="relative w-48 h-72 md:w-60 md:h-[340px] bg-[#1a1c29] rounded-xl border-4 border-slate-600 shadow-2xl flex flex-col items-center justify-center overflow-hidden p-2 flex-shrink-0">
+          <div className={`absolute top-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-sm font-bold border z-20 backdrop-blur-md shadow-lg transition-colors duration-300 ${isReversed ? 'bg-red-900/80 border-red-500 text-red-100' : 'bg-emerald-900/80 border-emerald-500 text-emerald-100'}`}>
+            {isReversed ? '逆位置 ▼' : '正位置 ▲'}
+          </div>
+          {!imageError ? (
+            <img src={imgUrl} alt={card.name} onError={() => setImageError(true)} className={`w-full h-full object-contain transition-transform duration-500 rounded ${isReversed ? 'rotate-180' : ''}`} />
+          ) : (
+            <div className="flex flex-col items-center justify-center w-full h-full relative">
+              <div className="absolute inset-2 border border-slate-500 rounded-lg pointer-events-none opacity-50"></div>
+              <SuitIcon type={card.type} isReversed={isReversed} className="mb-4" />
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const AdviceAccordion = ({ card, isReversed, showTitle = true }) => {
+      const [openTheme, setOpenTheme] = useState(null);
+      // ★ ここに「恋愛」「結婚」を追加して順番も調整しました
+      const themes = [ '未来', '運命', '決断','恋愛', '結婚', '多角分析', '深層', '年間運勢'];
+      
+      useEffect(() => { setOpenTheme(null); }, [card.id, isReversed]);
+
+      return (
+        <div className={showTitle ? "mt-6 border-t border-slate-700/50 pt-4 pb-2" : "mt-2"}>
+          {showTitle && (
+            <h4 className="font-bold text-amber-200 mb-4 flex items-center gap-2 text-sm md:text-base">
+              <Sparkles className="w-5 h-5"/>リーディング例・助言の仕方（学習用）
+            </h4>
+          )}
+          <div className="flex flex-col gap-2">
+            {themes.map(theme => (
+              <div key={theme} className="border border-slate-700 rounded-lg overflow-hidden bg-slate-800">
+                <button onClick={() => setOpenTheme(openTheme === theme ? null : theme)} className="w-full px-4 py-3 flex justify-between items-center hover:bg-slate-700 transition text-left">
+                  <span className="font-bold text-indigo-300 tracking-wide">【{theme}】のときの解釈</span>
+                  {openTheme === theme ? <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0"/> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0"/>}
+                </button>
+                {openTheme === theme && (
+                  <div className="p-4 bg-slate-900/80 text-slate-200 text-sm md:text-base leading-relaxed border-t border-slate-700 whitespace-pre-wrap">
+                    {generateAdvice(card, isReversed, theme)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    const GeneralMeaningsAccordion = () => {
+      const [openSection, setOpenSection] = useState(null);
+      const toggle = (section) => setOpenSection(prev => prev === section ? null : section);
+
+      return (
+        <div className="mt-6 border-t border-slate-700/80 pt-4">
+          <h4 className="text-sm font-bold text-amber-200 mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" />小アルカナの基礎知識（数と人物）</h4>
+          <div className="flex flex-col gap-2">
+            <div className="border border-slate-700 rounded-lg overflow-hidden bg-slate-900/50">
+              <button onClick={() => toggle('number')} className="w-full px-4 py-3 flex justify-between items-center hover:bg-slate-700 transition text-left">
+                <span className="font-bold text-indigo-300 text-sm">数字（1〜10）の共通する意味</span>
+                {openSection === 'number' ? <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0"/> : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0"/>}
+              </button>
+              {openSection === 'number' && (
+                <div className="p-4 bg-slate-900/80 text-slate-300 text-sm leading-relaxed border-t border-slate-700">
+                  <ul className="space-y-2">
+                    {NUMBER_MEANINGS.map((item, idx) => (
+                      <li key={idx} className="flex gap-2"><span className="font-bold text-emerald-400 min-w-[70px] flex-shrink-0">{item.num}</span><span>{item.text}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="border border-slate-700 rounded-lg overflow-hidden bg-slate-900/50">
+              <button onClick={() => toggle('court')} className="w-full px-4 py-3 flex justify-between items-center hover:bg-slate-700 transition text-left">
+                <span className="font-bold text-indigo-300 text-sm">人物（コートカード）の共通する意味</span>
+                {openSection === 'court' ? <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0"/> : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0"/>}
+              </button>
+              {openSection === 'court' && (
+                <div className="p-4 bg-slate-900/80 text-slate-300 text-sm leading-relaxed border-t border-slate-700">
+                  <ul className="space-y-3">
+                    {COURT_MEANINGS.map((item, idx) => (
+                      <li key={idx} className="flex flex-col"><span className="font-bold text-amber-400">{item.role}</span><span className="pl-3 border-l-2 border-slate-600 ml-1 mt-1 text-slate-400">{item.text}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const SpreadLayoutDisplay = ({ positions }) => {
+      return (
+        <div className="relative w-full aspect-square max-h-[400px] bg-slate-800 rounded-xl border-4 border-slate-700 shadow-inner overflow-hidden mb-6">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjAuNSIvPgo8L3N2Zz4=')] opacity-20 pointer-events-none"></div>
+          {positions.map(pos => (
+            <div 
+              key={pos.num}
+              className={`absolute flex flex-col items-center justify-center shadow-lg transition-transform hover:scale-110 cursor-help ${pos.rotate ? 'z-10' : 'z-0'}`}
+              style={{ left: `${pos.x}%`, top: `${pos.y}%`, width: '13%', height: '19%', transform: `translate(-50%, -50%) ${pos.rotate ? `rotate(${pos.rotate}deg)` : ''}` }}
+              title={pos.text}
+            >
+              <div className="w-full h-full bg-indigo-900 border-2 border-indigo-400 rounded flex items-center justify-center shadow-[0_0_10px_rgba(99,102,241,0.3)]">
+                <span className="text-white font-bold text-sm md:text-base drop-shadow-md">{pos.num}</span>
+              </div>
+              <span className="absolute -bottom-6 text-[10px] md:text-xs font-bold text-slate-300 whitespace-nowrap bg-slate-900/80 px-1 rounded opacity-0 md:opacity-100">{pos.text}</span>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    const shuffleArray = (array) => {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+
+
+    // ==========================================
+    // アプリ1: カード（アルカナ）学習＆クイズ
+    // ==========================================
+    const ArcanaApp = ({ onBackHome }) => {
+      const [gameState, setGameState] = useState('settings'); 
+      const [mode, setMode] = useState('study'); 
+      const [questionCount, setQuestionCount] = useState(5);
+      const [filters, setFilters] = useState({
+        major: false, fire: false, water: false, air: false, earth: false, court: false
+      });
+      
+      const [quizQuestions, setQuizQuestions] = useState([]);
+      const [score, setScore] = useState(0);
+      const [selectedOption, setSelectedOption] = useState(null);
+      const [showExplanation, setShowExplanation] = useState(false);
+      const [studyCards, setStudyCards] = useState([]);
+      const [studyIsReversed, setStudyIsReversed] = useState(false);
+      const [currentIndex, setCurrentIndex] = useState(0);
+
+      const handleFilterChange = (key) => setFilters(prev => ({ ...prev, [key]: !prev[key] }));
+
+      const startGame = () => {
+        let filteredDeck = TAROT_DECK.filter(card => {
+          if (filters.major && card.type === 'major') return true;
+          if (filters.fire && card.type === 'fire') return true;
+          if (filters.water && card.type === 'water') return true;
+          if (filters.air && card.type === 'air') return true;
+          if (filters.earth && card.type === 'earth') return true;
+          if (filters.court && card.isCourt) return true;
+          return false;
+        });
+
+        if (Object.values(filters).every(v => !v)) filteredDeck = [...TAROT_DECK];
+
+        if (mode === 'quiz') {
+          const shuffledDeck = shuffleArray(filteredDeck);
+          const maxQuestions = Math.min(questionCount, shuffledDeck.length);
+          const selectedCards = shuffledDeck.slice(0, maxQuestions);
+
+          const questions = selectedCards.map(card => {
+            const isReversed = Math.random() >= 0.5;
+            const correctMeaning = isReversed ? card.rev : card.up;
+            let wrongMeanings = ALL_MEANINGS.filter(m => m !== correctMeaning);
+            wrongMeanings = shuffleArray(wrongMeanings).slice(0, 4);
+            const options = shuffleArray([correctMeaning, ...wrongMeanings]);
+            return { card, isReversed, correctMeaning, options, correctIndex: options.indexOf(correctMeaning) };
+          });
+
+          setQuizQuestions(questions);
+          setCurrentIndex(0);
+          setScore(0);
+          setSelectedOption(null);
+          setShowExplanation(false);
+          setGameState('playing');
+        } else {
+          setStudyCards(filteredDeck);
+          setCurrentIndex(0);
+          setStudyIsReversed(false);
+          setGameState('studying');
+        }
+      };
+
+      const handleAnswer = (index) => {
+        if (showExplanation) return; 
+        setSelectedOption(index);
+        setShowExplanation(true);
+        if (index === quizQuestions[currentIndex].correctIndex) setScore(prev => prev + 1);
+      };
+
+      const handleNextQuiz = () => {
+        if (currentIndex < quizQuestions.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+          setSelectedOption(null);
+          setShowExplanation(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          setGameState('result');
+        }
+      };
+
+      const handleNextStudy = () => {
+        if (currentIndex < studyCards.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+          setStudyIsReversed(false); 
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      };
+      const handlePrevStudy = () => {
+        if (currentIndex > 0) {
+          setCurrentIndex(prev => prev - 1);
+          setStudyIsReversed(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      };
+
+      if (gameState === 'settings') {
+        return (
+          <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4">
+            <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 relative mt-12">
+              <button onClick={onBackHome} className="absolute -top-12 left-0 text-slate-400 hover:text-white flex items-center gap-2 transition">
+                <Home className="w-5 h-5"/> ホームに戻る
+              </button>
+
+              <h1 className="text-3xl font-bold text-center mb-2 text-emerald-400 flex items-center justify-center gap-2">
+                <Layers className="w-8 h-8" />カード学習
+              </h1>
+              <p className="text-slate-400 text-sm mb-6 text-center">学習モードと出題範囲を選択してください。<br/>未選択の場合は全78枚が対象になります。</p>
+
+              <div className="mb-8">
+                <h3 className="text-sm font-bold text-slate-300 mb-3 border-b border-slate-700 pb-2">1. モードを選択</h3>
+                <div className="flex gap-4">
+                  <label className={`flex-1 flex justify-center items-center py-4 rounded-xl cursor-pointer transition border-2 ${mode === 'study' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 font-bold' : 'bg-slate-900 border-slate-700 hover:bg-slate-700'}`}>
+                    <input type="radio" name="mode" value="study" checked={mode === 'study'} onChange={() => setMode('study')} className="hidden" />
+                    <div className="flex flex-col items-center gap-1">
+                      <BookOpen className="w-6 h-6 mb-1"/><span>全て勉強する</span>
+                    </div>
+                  </label>
+                  <label className={`flex-1 flex justify-center items-center py-4 rounded-xl cursor-pointer transition border-2 ${mode === 'quiz' ? 'bg-purple-600/20 border-purple-500 text-purple-300 font-bold' : 'bg-slate-900 border-slate-700 hover:bg-slate-700'}`}>
+                    <input type="radio" name="mode" value="quiz" checked={mode === 'quiz'} onChange={() => setMode('quiz')} className="hidden" />
+                    <div className="flex flex-col items-center gap-1">
+                      <BrainCircuit className="w-6 h-6 mb-1"/><span>クイズに挑戦</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-8">
+                <h3 className="text-sm font-bold text-slate-300 mb-3 border-b border-slate-700 pb-2">2. カードの種類</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition">
+                    <input type="checkbox" checked={filters.major} onChange={() => handleFilterChange('major')} className="w-5 h-5 accent-emerald-500" />
+                    <span className="text-sm">大アルカナ</span>
+                  </label>
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition">
+                    <input type="checkbox" checked={filters.court} onChange={() => handleFilterChange('court')} className="w-5 h-5 accent-emerald-500" />
+                    <span className="text-sm">人物 (コート)</span>
+                  </label>
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition border-l-4 border-red-500">
+                    <input type="checkbox" checked={filters.fire} onChange={() => handleFilterChange('fire')} className="w-5 h-5 accent-emerald-500" />
+                    <span className="text-sm">火 (ワンド)</span>
+                  </label>
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition border-l-4 border-blue-500">
+                    <input type="checkbox" checked={filters.water} onChange={() => handleFilterChange('water')} className="w-5 h-5 accent-emerald-500" />
+                    <span className="text-sm">水 (カップ)</span>
+                  </label>
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition border-l-4 border-emerald-500">
+                    <input type="checkbox" checked={filters.air} onChange={() => handleFilterChange('air')} className="w-5 h-5 accent-emerald-500" />
+                    <span className="text-sm">風 (ソード)</span>
+                  </label>
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition border-l-4 border-yellow-500">
+                    <input type="checkbox" checked={filters.earth} onChange={() => handleFilterChange('earth')} className="w-5 h-5 accent-emerald-500" />
+                    <span className="text-sm">土 (ペンタクル)</span>
+                  </label>
+                </div>
+                <GeneralMeaningsAccordion />
+              </div>
+
+              {mode === 'quiz' && (
+                <div className="mb-8 animate-fade-in">
+                  <h3 className="text-sm font-bold text-slate-300 mb-3 border-b border-slate-700 pb-2">3. クイズの出題数</h3>
+                  <div className="flex justify-between gap-2">
+                    {[5, 10, 15, 20].map(num => (
+                      <label key={num} className={`flex-1 flex justify-center items-center py-2 rounded-lg cursor-pointer transition border ${questionCount === num ? 'bg-purple-600/20 border-purple-500 text-purple-300 font-bold' : 'bg-slate-900 border-transparent hover:bg-slate-700'}`}>
+                        <input type="radio" name="questionCount" value={num} checked={questionCount === num} onChange={() => setQuestionCount(num)} className="hidden" />
+                        <span>{num}問</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button onClick={startGame} className={`w-full font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg ${mode === 'study' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50' : 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/50'} text-white`}>
+                {mode === 'study' ? <BookOpen className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                {mode === 'study' ? '勉強をスタート' : 'クイズをスタート'}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if (gameState === 'result') {
+        const isPerfect = score === quizQuestions.length;
+        const isGood = score >= quizQuestions.length * 0.6;
+        return (
+          <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4">
+            <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 text-center relative mt-12">
+              <button onClick={onBackHome} className="absolute -top-12 left-0 text-slate-400 hover:text-white flex items-center gap-2 transition">
+                <Home className="w-5 h-5"/> ホームに戻る
+              </button>
+              <h2 className="text-3xl font-bold text-purple-400 mb-4">結果発表</h2>
+              <div className="text-6xl mb-6">{isPerfect ? '🏆' : isGood ? '🎉' : '📖'}</div>
+              <p className="text-2xl font-bold mb-8">{quizQuestions.length}問中 <span className="text-5xl text-white mx-2">{score}</span> 問正解！</p>
+              <button onClick={startGame} className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition mb-4">
+                <RefreshCw className="w-5 h-5" />同じ設定でシャッフルして再挑戦
+              </button>
+              <button onClick={() => setGameState('settings')} className="w-full bg-transparent border border-slate-600 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition">
+                設定に戻る
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if (gameState === 'studying') {
+        const currentCard = studyCards[currentIndex];
+        return (
+          <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col p-4 md:p-8 font-sans">
+            <div className="flex justify-between items-center mb-6 max-w-5xl w-full mx-auto">
+              <div className="text-slate-400 font-bold bg-slate-800 px-4 py-2 rounded-lg shadow-md border border-slate-700">
+                カード <span className="text-white">{currentIndex + 1}</span> / {studyCards.length}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setGameState('settings')} className="text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition text-slate-300 shadow-md border border-slate-700">設定</button>
+                <button onClick={onBackHome} className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition text-slate-300 shadow-md border border-slate-700">
+                  <Home className="w-4 h-4"/>ホーム
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 max-w-5xl w-full mx-auto flex-1 pb-10">
+              <div className="w-full lg:w-1/3 flex flex-col md:flex-row lg:flex-col items-center justify-center md:justify-start lg:justify-start gap-6 pt-2">
+                <CardDisplay card={currentCard} isReversed={studyIsReversed} />
+                <div className="text-center md:text-left lg:text-center max-w-[280px] md:max-w-none">
+                  <h3 className="text-2xl md:text-3xl font-extrabold text-amber-200 tracking-wide leading-tight drop-shadow-md">
+                    {formatCardTitle(currentCard.name)}
+                  </h3>
+                </div>
+              </div>
+              <div className="w-full lg:w-2/3 flex flex-col gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className={`p-5 rounded-xl border shadow-inner transition-colors ${!studyIsReversed ? 'bg-emerald-900/40 border-emerald-500/50' : 'bg-slate-800/80 border-slate-700'}`}>
+                    <h4 className="text-emerald-400 font-bold mb-3 flex items-center gap-2">▲ 正位置の意味</h4>
+                    <p className="text-slate-200 leading-relaxed">{currentCard.up}</p>
+                  </div>
+                  <div className={`p-5 rounded-xl border shadow-inner transition-colors ${studyIsReversed ? 'bg-red-900/40 border-red-500/50' : 'bg-slate-800/80 border-slate-700'}`}>
+                    <h4 className="text-red-400 font-bold mb-3 flex items-center gap-2">▼ 逆位置の意味</h4>
+                    <p className="text-slate-200 leading-relaxed">{currentCard.rev}</p>
+                  </div>
+                </div>
+                <div className="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-inner">
+                  <h4 className="text-amber-200 font-bold mb-3 flex items-center gap-2"><BookOpen className="w-5 h-5"/>絵柄が示す意味・シンボル</h4>
+                  <p className="text-slate-200 leading-relaxed">{currentCard.desc}</p>
+                </div>
+                <div className="bg-slate-800/50 p-5 rounded-xl border border-slate-700 mt-2">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+                    <h4 className="font-bold text-indigo-300 flex items-center gap-2"><Sparkles className="w-5 h-5"/>実践リーディング例</h4>
+                    <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
+                      <button onClick={() => setStudyIsReversed(false)} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${!studyIsReversed ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>正位置の場合</button>
+                      <button onClick={() => setStudyIsReversed(true)} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${studyIsReversed ? 'bg-red-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>逆位置の場合</button>
+                    </div>
+                  </div>
+                  <AdviceAccordion card={currentCard} isReversed={studyIsReversed} showTitle={false} />
+                </div>
+                <div className="flex justify-between gap-4 mt-4">
+                  <button onClick={handlePrevStudy} disabled={currentIndex === 0} className={`flex-1 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition ${currentIndex === 0 ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-slate-700 text-white hover:bg-slate-600 shadow-md'}`}>
+                    <ChevronLeft className="w-5 h-5" />前のカード
+                  </button>
+                  <button onClick={handleNextStudy} disabled={currentIndex === studyCards.length - 1} className={`flex-1 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition ${currentIndex === studyCards.length - 1 ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-md'}`}>
+                    次のカード<ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // クイズプレイ画面
+      const q = quizQuestions[currentIndex];
+      const isCorrect = selectedOption === q.correctIndex;
+      return (
+        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col p-4 md:p-8 font-sans">
+          <div className="flex justify-between items-center mb-6 max-w-5xl w-full mx-auto">
+            <div className="text-slate-400 font-bold bg-slate-800 px-4 py-2 rounded-lg shadow-md border border-slate-700">
+              問題 <span className="text-white">{currentIndex + 1}</span> / {quizQuestions.length}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={startGame} className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition text-slate-300 shadow-md border border-slate-700">
+                <RefreshCw className="w-4 h-4" />リフレッシュ
+              </button>
+              <button onClick={onBackHome} className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition text-slate-300 shadow-md border border-slate-700">
+                <Home className="w-4 h-4"/>ホーム
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 max-w-5xl w-full mx-auto flex-1 pb-10">
+            <div className="w-full lg:w-1/3 flex flex-col md:flex-row lg:flex-col items-center justify-center md:justify-start lg:justify-start gap-6 pt-2">
+              <CardDisplay card={q.card} isReversed={q.isReversed} />
+              <div className="text-center md:text-left lg:text-center max-w-[280px] md:max-w-none">
+                <h3 className="text-2xl md:text-3xl font-extrabold text-amber-200 tracking-wide leading-tight drop-shadow-md">
+                  {formatCardTitle(q.card.name)}
+                </h3>
+                <p className="text-slate-400 font-bold mt-2 text-lg">{q.isReversed ? '▼ 逆位置' : '▲ 正位置'}</p>
+              </div>
+            </div>
+            <div className="w-full lg:w-2/3 flex flex-col">
+              <h2 className="text-xl md:text-2xl font-bold mb-6 leading-relaxed">
+                このカードの【<span className={q.isReversed ? 'text-red-400' : 'text-emerald-400'}>{q.isReversed ? '逆位置' : '正位置'}</span>】が持つ意味はどれ？
+              </h2>
+              <div className="flex flex-col gap-3">
+                {q.options.map((opt, idx) => {
+                  let btnClass = "text-left p-4 rounded-xl border-2 transition-all duration-200 text-sm md:text-base ";
+                  if (!showExplanation) {
+                    btnClass += "bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-purple-500 cursor-pointer shadow-md";
+                  } else {
+                    if (idx === q.correctIndex) btnClass += "bg-emerald-900/40 border-emerald-500 text-emerald-100 shadow-[0_0_15px_rgba(16,185,129,0.3)]";
+                    else if (idx === selectedOption) btnClass += "bg-red-900/40 border-red-500 text-red-100 opacity-90";
+                    else btnClass += "bg-slate-800/50 border-slate-800 opacity-40 cursor-not-allowed hidden md:block"; 
+                  }
+                  return (
+                    <button key={idx} onClick={() => handleAnswer(idx)} disabled={showExplanation} className={btnClass}>
+                      <div className="flex items-center justify-between">
+                        <span>{opt}</span>
+                        {showExplanation && idx === q.correctIndex && <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0 ml-2" />}
+                        {showExplanation && idx === selectedOption && idx !== q.correctIndex && <XCircle className="w-6 h-6 text-red-500 flex-shrink-0 ml-2" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {showExplanation && (
+                <div className={`mt-6 p-5 rounded-xl border-2 shadow-lg ${isCorrect ? 'bg-emerald-900/20 border-emerald-800/50' : 'bg-red-900/20 border-red-800/50'} animate-fade-in`}>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                    <div>
+                      <p className={`font-bold text-xl mb-2 flex items-center gap-2 ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {isCorrect ? <CheckCircle2 className="w-6 h-6"/> : <XCircle className="w-6 h-6"/>}
+                        {isCorrect ? '正解！' : '不正解...'}
+                      </p>
+                      <p className="text-slate-300">
+                        <span className="font-bold text-amber-200">{formatCardTitle(q.card.name)}</span> の {q.isReversed ? '逆位置' : '正位置'} は<br className="hidden md:block"/>
+                        「<span className="font-bold text-white">{q.correctMeaning}</span>」を意味します。
+                      </p>
+                    </div>
+                    <button onClick={handleNextQuiz} className="w-full md:w-auto bg-white text-slate-900 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition active:scale-95 flex-shrink-0 shadow-lg">
+                      {currentIndex < quizQuestions.length - 1 ? '次の問題へ' : '結果を見る'}
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="bg-slate-900/60 p-4 rounded-lg mt-4 border border-slate-700">
+                    <div className="mb-4">
+                      <h4 className="font-bold text-indigo-300 mb-1 flex items-center gap-2 text-sm md:text-base">
+                        <ArrowDownUp className="w-4 h-4"/>ちなみに、【{q.isReversed ? '正位置' : '逆位置'}】の場合は...
+                      </h4>
+                      <p className="text-sm text-slate-300 pl-6 leading-relaxed">{q.isReversed ? q.card.up : q.card.rev}</p>
+                    </div>
+                    <div className="border-t border-slate-700/50 pt-4">
+                      <h4 className="font-bold text-amber-200 mb-1 flex items-center gap-2 text-sm md:text-base">
+                        <BookOpen className="w-4 h-4"/> カードの絵柄が示す意味・シンボル
+                      </h4>
+                      <p className="text-sm text-slate-300 pl-6 leading-relaxed">{q.card.desc}</p>
+                    </div>
+                  </div>
+                  <AdviceAccordion card={q.card} isReversed={q.isReversed} showTitle={true} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+
+    // ==========================================
+    // アプリ2: スプレッド学習＆クイズ
+    // ==========================================
+    const SpreadApp = ({ onBackHome }) => {
+      const [gameState, setGameState] = useState('settings'); 
+      const [mode, setMode] = useState('study'); 
+      const [questionCount, setQuestionCount] = useState(5);
+      const [spreadFilters, setSpreadFilters] = useState({
+        fortune: false, self: false, relations: false, problem: false
+      });
+      
+      const [quizQuestions, setQuizQuestions] = useState([]);
+      const [score, setScore] = useState(0);
+      const [selectedOption, setSelectedOption] = useState(null);
+      const [showExplanation, setShowExplanation] = useState(false);
+      
+      const [studyList, setStudyList] = useState([]);
+      const [currentIndex, setCurrentIndex] = useState(0);
+
+      const handleFilterChange = (key) => setSpreadFilters(prev => ({ ...prev, [key]: !prev[key] }));
+
+      const startGame = () => {
+        let filteredSpreads = SPREADS.filter(s => {
+          if (spreadFilters.fortune && s.category === '運勢') return true;
+          if (spreadFilters.self && s.category === '自分自身の悩み') return true;
+          if (spreadFilters.relations && s.category === '対人関係') return true;
+          if (spreadFilters.problem && s.category === '問題解決') return true;
+          return false;
+        });
+
+        if (Object.values(spreadFilters).every(v => !v)) filteredSpreads = [...SPREADS];
+
+        if (mode === 'quiz') {
+          const shuffled = shuffleArray(filteredSpreads);
+          const maxQ = questionCount === 'all' ? shuffled.length : Math.min(questionCount, shuffled.length);
+          const selected = shuffled.slice(0, maxQ);
+
+          const questions = selected.map(spread => {
+            const correctName = spread.name;
+            let wrongOptions = SPREADS.filter(s => s.name !== correctName).map(s => s.name);
+            wrongOptions = shuffleArray(wrongOptions).slice(0, 3); 
+            const options = shuffleArray([correctName, ...wrongOptions]);
+            return { spread, options, correctIndex: options.indexOf(correctName) };
+          });
+
+          setQuizQuestions(questions);
+          setCurrentIndex(0);
+          setScore(0);
+          setSelectedOption(null);
+          setShowExplanation(false);
+          setGameState('playing');
+        } else {
+          setStudyList(filteredSpreads);
+          setCurrentIndex(0);
+          setGameState('studying');
+        }
+      };
+
+      const handleAnswer = (index) => {
+        if (showExplanation) return; 
+        setSelectedOption(index);
+        setShowExplanation(true);
+        if (index === quizQuestions[currentIndex].correctIndex) setScore(prev => prev + 1);
+      };
+
+      const handleNextQuiz = () => {
+        if (currentIndex < quizQuestions.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+          setSelectedOption(null);
+          setShowExplanation(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          setGameState('result');
+        }
+      };
+
+      const handleNextStudy = () => {
+        if (currentIndex < studyList.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      };
+      const handlePrevStudy = () => {
+        if (currentIndex > 0) {
+          setCurrentIndex(prev => prev - 1);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      };
+
+      if (gameState === 'settings') {
+        return (
+          <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4">
+            <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 relative mt-12">
+              
+              <button onClick={onBackHome} className="absolute -top-12 left-0 text-slate-400 hover:text-white flex items-center gap-2 transition">
+                <Home className="w-5 h-5"/> ホームに戻る
+              </button>
+
+              <h1 className="text-3xl font-bold text-center mb-2 text-indigo-400 flex items-center justify-center gap-2">
+                <LayoutGrid className="w-8 h-8" />スプレッド学習
+              </h1>
+              <p className="text-slate-400 text-sm mb-8 text-center">タロットカードの展開法（スプレッド）を学びましょう。</p>
+
+              <div className="mb-8">
+                <h3 className="text-sm font-bold text-slate-300 mb-3 border-b border-slate-700 pb-2">1. モードを選択</h3>
+                <div className="flex gap-4">
+                  <label className={`flex-1 flex justify-center items-center py-4 rounded-xl cursor-pointer transition border-2 ${mode === 'study' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 font-bold' : 'bg-slate-900 border-slate-700 hover:bg-slate-700'}`}>
+                    <input type="radio" name="mode" value="study" checked={mode === 'study'} onChange={() => setMode('study')} className="hidden" />
+                    <div className="flex flex-col items-center gap-1">
+                      <BookOpen className="w-6 h-6 mb-1"/><span>全て勉強する</span>
+                    </div>
+                  </label>
+                  <label className={`flex-1 flex justify-center items-center py-4 rounded-xl cursor-pointer transition border-2 ${mode === 'quiz' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-bold' : 'bg-slate-900 border-slate-700 hover:bg-slate-700'}`}>
+                    <input type="radio" name="mode" value="quiz" checked={mode === 'quiz'} onChange={() => setMode('quiz')} className="hidden" />
+                    <div className="flex flex-col items-center gap-1">
+                      <BrainCircuit className="w-6 h-6 mb-1"/><span>クイズに挑戦</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-8">
+                <h3 className="text-sm font-bold text-slate-300 mb-2 border-b border-slate-700 pb-2">2. 得意占い（カテゴリ）</h3>
+                <p className="text-xs text-slate-400 mb-3">※未選択の場合は全22種が対象になります。<br/>「★」は初心者におすすめです。</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition">
+                    <input type="checkbox" checked={spreadFilters.fortune} onChange={() => handleFilterChange('fortune')} className="w-5 h-5 accent-indigo-500" />
+                    <span className="text-sm">運勢 <span className="text-slate-400 text-xs">(4種)</span></span>
+                  </label>
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition">
+                    <input type="checkbox" checked={spreadFilters.self} onChange={() => handleFilterChange('self')} className="w-5 h-5 accent-indigo-500" />
+                    <span className="text-sm">自分自身の悩み <span className="text-slate-400 text-xs">(4種)</span></span>
+                  </label>
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition">
+                    <input type="checkbox" checked={spreadFilters.relations} onChange={() => handleFilterChange('relations')} className="w-5 h-5 accent-indigo-500" />
+                    <span className="text-sm">対人関係 <span className="text-slate-400 text-xs">(3種)</span></span>
+                  </label>
+                  <label className="flex items-center space-x-3 bg-slate-900 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition">
+                    <input type="checkbox" checked={spreadFilters.problem} onChange={() => handleFilterChange('problem')} className="w-5 h-5 accent-indigo-500" />
+                    <span className="text-sm">問題解決 <span className="text-slate-400 text-xs">(11種)</span></span>
+                  </label>
+                </div>
+              </div>
+
+              {mode === 'quiz' && (
+                <div className="mb-8 animate-fade-in">
+                  <h3 className="text-sm font-bold text-slate-300 mb-3 border-b border-slate-700 pb-2">3. クイズの出題数</h3>
+                  <div className="flex justify-between gap-2">
+                    {[3, 5, 10, 'all'].map(num => (
+                      <label key={num} className={`flex-1 flex justify-center items-center py-2 rounded-lg cursor-pointer transition border ${questionCount === num ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-bold' : 'bg-slate-900 border-transparent hover:bg-slate-700'}`}>
+                        <input type="radio" name="questionCount" value={num} checked={questionCount === num} onChange={() => setQuestionCount(num)} className="hidden" />
+                        <span>{num === 'all' ? '全問' : `${num}問`}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button 
+                onClick={startGame}
+                className={`w-full font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg ${mode === 'study' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/50'} text-white`}
+              >
+                {mode === 'study' ? <BookOpen className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                {mode === 'study' ? '勉強をスタート' : 'クイズをスタート'}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if (gameState === 'result') {
+        const isPerfect = score === quizQuestions.length;
+        const isGood = score >= quizQuestions.length * 0.6;
+        return (
+          <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4">
+            <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 text-center relative mt-12">
+              <button onClick={onBackHome} className="absolute -top-12 left-0 text-slate-400 hover:text-white flex items-center gap-2 transition">
+                <Home className="w-5 h-5"/> ホームに戻る
+              </button>
+              <h2 className="text-3xl font-bold text-indigo-400 mb-4">結果発表</h2>
+              <div className="text-6xl mb-6">{isPerfect ? '🏆' : isGood ? '🎉' : '📖'}</div>
+              <p className="text-2xl font-bold mb-8">{quizQuestions.length}問中 <span className="text-5xl text-white mx-2">{score}</span> 問正解！</p>
+              <button onClick={startGame} className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition mb-4">
+                <RefreshCw className="w-5 h-5" />もう一度クイズをする
+              </button>
+              <button onClick={() => setGameState('settings')} className="w-full bg-transparent border border-slate-600 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition">
+                設定に戻る
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if (gameState === 'studying') {
+        const spread = studyList[currentIndex];
+        return (
+          <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col p-4 md:p-8 font-sans">
+            <div className="flex justify-between items-center mb-6 max-w-5xl w-full mx-auto">
+              <div className="text-slate-400 font-bold bg-slate-800 px-4 py-2 rounded-lg shadow-md border border-slate-700 flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4"/>
+                スプレッド <span className="text-white">{currentIndex + 1}</span> / {studyList.length}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setGameState('settings')} className="text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition text-slate-300 shadow-md border border-slate-700">設定</button>
+                <button onClick={onBackHome} className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition text-slate-300 shadow-md border border-slate-700">
+                  <Home className="w-4 h-4"/>ホーム
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 max-w-5xl w-full mx-auto flex-1 pb-10">
+              <div className="w-full lg:w-5/12 flex flex-col pt-2">
+                <div className="mb-4">
+                   <span className="bg-indigo-900/80 text-indigo-200 text-xs font-bold px-2 py-1 rounded mb-2 inline-block border border-indigo-700">
+                     カテゴリ：{spread.category}
+                   </span>
+                   <h3 className="text-2xl md:text-3xl font-extrabold text-amber-200 tracking-wide">
+                     {spread.name}
+                   </h3>
+                </div>
+                <SpreadLayoutDisplay positions={spread.positions} />
+              </div>
+
+              <div className="w-full lg:w-7/12 flex flex-col gap-6">
+                <div className="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-inner">
+                  <h4 className="text-indigo-300 font-bold mb-2 flex items-center gap-2"><Info className="w-5 h-5"/>目的・適した質問</h4>
+                  <p className="text-slate-200 text-lg leading-relaxed font-bold bg-slate-900/50 p-3 rounded-lg border-l-4 border-indigo-500">
+                    {spread.purpose}
+                  </p>
+                  <h4 className="text-emerald-300 font-bold mt-4 mb-2 flex items-center gap-2"><BookOpen className="w-5 h-5"/>特徴・解説</h4>
+                  <p className="text-slate-300 leading-relaxed">{spread.description}</p>
+                </div>
+                <div className="bg-slate-800/50 p-5 rounded-xl border border-slate-700">
+                  <h4 className="font-bold text-amber-200 mb-4 flex items-center gap-2"><LayoutGrid className="w-5 h-5"/>各カードの配置と意味</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {spread.positions.map(p => (
+                      <div key={p.num} className="bg-slate-900/80 p-3 rounded-lg text-sm md:text-base border border-slate-700 flex items-center gap-3">
+                        <span className="bg-indigo-900 text-white w-7 h-7 rounded-full flex items-center justify-center font-bold flex-shrink-0">{p.num}</span>
+                        <span className="text-slate-200 font-bold">{p.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-slate-800/80 p-5 rounded-xl border border-slate-700 shadow-inner">
+                  <h4 className="text-pink-300 font-bold mb-2 flex items-center gap-2"><Sparkles className="w-5 h-5"/>実践リーディングのコツ</h4>
+                  <p className="text-slate-300 leading-relaxed">{spread.advice}</p>
+                </div>
+                <div className="flex justify-between gap-4 mt-4">
+                  <button onClick={handlePrevStudy} disabled={currentIndex === 0} className={`flex-1 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition ${currentIndex === 0 ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-slate-700 text-white hover:bg-slate-600 shadow-md'}`}>
+                    <ChevronLeft className="w-5 h-5" />前のスプレッド
+                  </button>
+                  <button onClick={handleNextStudy} disabled={currentIndex === studyList.length - 1} className={`flex-1 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition ${currentIndex === studyList.length - 1 ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-md'}`}>
+                    次のスプレッド<ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const q = quizQuestions[currentIndex];
+      const isCorrect = selectedOption === q.correctIndex;
+      return (
+        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col p-4 md:p-8 font-sans">
+          <div className="flex justify-between items-center mb-6 max-w-5xl w-full mx-auto">
+            <div className="text-slate-400 font-bold bg-slate-800 px-4 py-2 rounded-lg shadow-md border border-slate-700">
+              問題 <span className="text-white">{currentIndex + 1}</span> / {quizQuestions.length}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={startGame} className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition text-slate-300 shadow-md border border-slate-700">
+                <RefreshCw className="w-4 h-4" />リフレッシュ
+              </button>
+              <button onClick={onBackHome} className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition text-slate-300 shadow-md border border-slate-700">
+                <Home className="w-4 h-4"/>ホーム
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 max-w-5xl w-full mx-auto flex-1 pb-10">
+            <div className="w-full lg:w-5/12 flex flex-col pt-2">
+              {!showExplanation ? (
+                <div className="bg-slate-800/80 p-6 md:p-8 rounded-2xl border-2 border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.2)] h-full flex flex-col justify-center">
+                  <h3 className="text-xl md:text-2xl font-bold text-indigo-300 mb-6 flex items-center gap-2"><Info className="w-6 h-6"/>以下の目的・特徴を持つスプレッドはどれ？</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-400 mb-2">【 適した質問・目的 】</h4>
+                      <p className="text-amber-200 text-lg md:text-xl font-bold leading-relaxed border-l-4 border-amber-500 pl-4 bg-slate-900/50 py-3 rounded-r-lg">
+                        {q.spread.purpose}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-400 mb-2">【 特徴・解説 】</h4>
+                      <p className="text-slate-300 leading-relaxed text-sm md:text-base">{q.spread.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-fade-in">
+                   <div className="mb-2 text-center lg:text-left">
+                     <span className="bg-indigo-900/80 text-indigo-200 text-xs font-bold px-2 py-1 rounded inline-block border border-indigo-700">
+                       カテゴリ：{q.spread.category}
+                     </span>
+                   </div>
+                   <h3 className="text-2xl md:text-3xl font-extrabold text-amber-200 tracking-wide mb-4 text-center lg:text-left">{q.spread.name}</h3>
+                  <SpreadLayoutDisplay positions={q.spread.positions} />
+                </div>
+              )}
+            </div>
+
+            <div className="w-full lg:w-7/12 flex flex-col justify-center">
+              {!showExplanation && (
+                 <h2 className="text-xl md:text-2xl font-bold mb-6 leading-relaxed">選択肢から正しいスプレッド名を選んでください。</h2>
+              )}
+              <div className="flex flex-col gap-3">
+                {q.options.map((opt, idx) => {
+                  let btnClass = "text-left p-4 md:p-5 rounded-xl border-2 transition-all duration-200 text-base md:text-lg font-bold ";
+                  if (!showExplanation) {
+                    btnClass += "bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-indigo-500 cursor-pointer shadow-md";
+                  } else {
+                    if (idx === q.correctIndex) btnClass += "bg-emerald-900/40 border-emerald-500 text-emerald-100 shadow-[0_0_15px_rgba(16,185,129,0.3)]";
+                    else if (idx === selectedOption) btnClass += "bg-red-900/40 border-red-500 text-red-100 opacity-90";
+                    else btnClass += "bg-slate-800/50 border-slate-800 opacity-40 cursor-not-allowed hidden lg:block"; 
+                  }
+                  return (
+                    <button key={idx} onClick={() => handleAnswer(idx)} disabled={showExplanation} className={btnClass}>
+                      <div className="flex items-center justify-between">
+                        <span>{opt}</span>
+                        {showExplanation && idx === q.correctIndex && <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0 ml-2" />}
+                        {showExplanation && idx === selectedOption && idx !== q.correctIndex && <XCircle className="w-6 h-6 text-red-500 flex-shrink-0 ml-2" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {showExplanation && (
+                <div className={`mt-6 p-5 rounded-xl border-2 shadow-lg ${isCorrect ? 'bg-emerald-900/20 border-emerald-800/50' : 'bg-red-900/20 border-red-800/50'} animate-fade-in`}>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                    <div>
+                      <p className={`font-bold text-xl mb-2 flex items-center gap-2 ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {isCorrect ? <CheckCircle2 className="w-6 h-6"/> : <XCircle className="w-6 h-6"/>}
+                        {isCorrect ? '正解！' : '不正解...'}
+                      </p>
+                      <p className="text-slate-300">
+                        この目的・特徴を持つスプレッドは<br className="hidden md:block"/>
+                        「<span className="font-bold text-white text-lg">{q.correctMeaning}</span>」です。
+                      </p>
+                    </div>
+                    <button onClick={handleNextQuiz} className="w-full md:w-auto bg-white text-slate-900 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition active:scale-95 flex-shrink-0 shadow-lg">
+                      {currentIndex < quizQuestions.length - 1 ? '次の問題へ' : '結果を見る'}
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="bg-slate-800/80 p-4 rounded-lg mt-4 border border-slate-700">
+                    <h4 className="font-bold text-amber-200 mb-3 flex items-center gap-2 text-sm md:text-base"><LayoutGrid className="w-4 h-4"/> このスプレッドの配置と意味</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {q.spread.positions.map(p => (
+                        <div key={p.num} className="bg-slate-900/50 p-2 rounded text-xs md:text-sm border border-slate-700 flex items-center gap-2">
+                          <span className="text-indigo-300 font-bold w-4">{p.num}.</span><span className="text-slate-300">{p.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-slate-900/60 p-4 rounded-lg mt-4 border border-slate-700">
+                    <h4 className="font-bold text-pink-300 mb-2 flex items-center gap-2 text-sm md:text-base"><Sparkles className="w-4 h-4"/> リーディングのコツ</h4>
+                    <p className="text-sm text-slate-300 leading-relaxed">{q.spread.advice}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+
+    // ==========================================
+    // ルート（トップ）アプリケーション
+    // ==========================================
+    function App() {
+      const [appMode, setAppMode] = useState('home'); // 'home', 'arcana', 'spread'
+
+      if (appMode === 'arcana') return <ArcanaApp onBackHome={() => setAppMode('home')} />;
+      if (appMode === 'spread') return <SpreadApp onBackHome={() => setAppMode('home')} />;
+
+      // --- トップ画面 (Home) ---
+      return (
+        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+          
+          {/* ▼▼▼ 追加：ポータルへ戻るボタン ▼▼▼ */}
+          <a 
+            href="https://piaf-jp.github.io/synchronicity_Portal_20260613_001/"
+            className="absolute top-4 left-4 md:top-8 md:left-8 z-30 flex items-center gap-2 text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-600 px-4 py-2.5 rounded-xl transition-all shadow-lg text-sm font-bold hover:shadow-indigo-900/50 backdrop-blur-sm"
+          >
+            <ExternalLink className="w-4 h-4" />
+            ポータルへ戻る
+          </a>
+          {/* ▲▲▲ ここまで ▲▲▲ */}
+
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+
+          <div className="text-center z-10 max-w-xl w-full">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 mb-4 tracking-tight">
+              🔮 タロット総合学習アプリ
+            </h1>
+            <p className="text-slate-400 text-lg mb-12">
+              タロットカードの深い意味と、実践的な展開法（スプレッド）を体系的に学べるアプリケーションです。
+            </p>
+
+            <div className="flex flex-col gap-6">
+              <button onClick={() => setAppMode('arcana')} className="group relative overflow-hidden bg-slate-800 border border-slate-700 hover:border-emerald-500 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.2)] hover:-translate-y-1 text-left flex items-center gap-6 w-full">
+                <div className="bg-emerald-900/50 p-4 rounded-xl group-hover:bg-emerald-600 transition-colors">
+                  <Layers className="w-10 h-10 text-emerald-400 group-hover:text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">カードのアルカナを学ぶ</h2>
+                  <p className="text-slate-400 text-sm leading-relaxed">全78枚（大・小アルカナ）の意味や絵柄のシンボル、実践的な解釈を学びます。</p>
+                </div>
+                <ChevronRight className="w-8 h-8 text-slate-600 ml-auto group-hover:text-emerald-400" />
+              </button>
+
+              <button onClick={() => setAppMode('spread')} className="group relative overflow-hidden bg-slate-800 border border-slate-700 hover:border-indigo-500 rounded-2xl p-6 transition-all duration-300 hover:shadow-[0_0_30px_rgba(99,102,241,0.2)] hover:-translate-y-1 text-left flex items-center gap-6 w-full">
+                <div className="bg-indigo-900/50 p-4 rounded-xl group-hover:bg-indigo-600 transition-colors">
+                  <LayoutGrid className="w-10 h-10 text-indigo-400 group-hover:text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">スプレッド (展開法) を学ぶ</h2>
+                  <p className="text-slate-400 text-sm leading-relaxed">運勢、悩み、対人関係など、目的別のスプレッド（全22種）の配置と読み方を学びます。</p>
+                </div>
+                <ChevronRight className="w-8 h-8 text-slate-600 ml-auto group-hover:text-indigo-400" />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 画面(DOM)にReactアプリをレンダリングする
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
